@@ -55,16 +55,32 @@ export function Sidebar({
       <div className="brand-row">
         <div className="brand-name">
           <strong>Papliba</strong>
-          <span>alpha</span>
+          <ChevronDownIcon />
         </div>
-        <button
-          aria-label={isSidebarOpen ? "Collapse sidebar" : "Open sidebar"}
-          className="sidebar-toggle"
-          onClick={onToggleSidebar}
-          type="button"
-        >
-          <SidebarToggleIcon isOpen={isSidebarOpen} />
-        </button>
+        <div className="brand-actions">
+          <button
+            aria-label="Global search"
+            className="brand-icon-button"
+            type="button"
+          >
+            <SearchIcon />
+          </button>
+          <button
+            aria-label="Notifications"
+            className="brand-icon-button"
+            type="button"
+          >
+            <BellIcon />
+          </button>
+          <button
+            aria-label={isSidebarOpen ? "Collapse sidebar" : "Open sidebar"}
+            className="sidebar-toggle"
+            onClick={onToggleSidebar}
+            type="button"
+          >
+            <SidebarToggleIcon isOpen={isSidebarOpen} />
+          </button>
+        </div>
       </div>
 
       <section className="sidebar-section">
@@ -210,7 +226,7 @@ function EmptyOrganizationRow({
   if (!isSidebarOpen) {
     return (
       <button
-        aria-label="Open sidebar"
+        aria-label="Open organizations"
         className="organization-empty"
         onClick={onOpenSidebar}
         type="button"
@@ -374,6 +390,47 @@ function SidebarToggleIcon({ isOpen }: { isOpen: boolean }) {
         y="7"
       />
       <path className="sidebar-layout-icon-divider" d="M9 5v14" />
+    </svg>
+  );
+}
+
+function ChevronDownIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      className="brand-chevron-icon"
+      fill="none"
+      viewBox="0 0 24 24"
+    >
+      <path d="m7 10 5 5 5-5" />
+    </svg>
+  );
+}
+
+function SearchIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      className="brand-action-icon"
+      fill="none"
+      viewBox="0 0 24 24"
+    >
+      <circle cx="11" cy="11" r="7" />
+      <path d="m16 16 4 4" />
+    </svg>
+  );
+}
+
+function BellIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      className="brand-action-icon"
+      fill="none"
+      viewBox="0 0 24 24"
+    >
+      <path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9Z" />
+      <path d="M10 21h4" />
     </svg>
   );
 }

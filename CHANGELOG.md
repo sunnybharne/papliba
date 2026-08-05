@@ -8,6 +8,7 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ### Changed
 
+- Added a compact global search and notification header to the sidebar.
 - Restyled sidebar organization and project rows with simpler icon menu items.
 - Restyled the lower-left account menu to match the compact reference layout.
 - Removed extra subtext from the Settings menu item.

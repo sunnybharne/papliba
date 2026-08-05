@@ -147,26 +147,59 @@ a {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  min-height: 26px;
+  min-height: 32px;
 }
 
 .brand-name {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 5px;
   min-width: 0;
+  color: var(--text);
 }
 
 .brand-name strong {
-  color: var(--text);
-  font-weight: 600;
+  overflow: hidden;
+  font-size: 1rem;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.brand-name span {
+.brand-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.brand-icon-button {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border: 0;
+  border-radius: 9px;
   color: var(--muted);
-  font-size: 0.7rem;
-  font-weight: 600;
-  text-transform: uppercase;
+  background: transparent;
+}
+
+.brand-action-icon {
+  width: 21px;
+  height: 21px;
+  stroke: currentColor;
+  stroke-width: 1.75;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.brand-chevron-icon {
+  width: 17px;
+  height: 17px;
+  color: var(--muted);
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .organization-search,
@@ -268,6 +301,7 @@ a {
 }
 
 .icon-button:hover,
+.brand-icon-button:hover,
 .sidebar-toggle:hover,
 .thread-item:hover,
 .account-button:hover,
@@ -653,6 +687,7 @@ a {
 }
 
 .sidebar[data-open="false"] .brand-name,
+.sidebar[data-open="false"] .brand-icon-button,
 .sidebar[data-open="false"] .section-title,
 .sidebar[data-open="false"] .organization-empty div,
 .sidebar[data-open="false"] .organization-text,
