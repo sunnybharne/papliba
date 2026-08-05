@@ -6,6 +6,10 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ## [Unreleased]
 
+### Changed
+
+- Replaced the organization pin icon with a cleaner favorite marker.
+
 ## [0.2.0] - 2026-08-05
 
 ### Added

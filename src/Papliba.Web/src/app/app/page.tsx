@@ -92,6 +92,19 @@ function MarkdownPreview({ markdown }: { markdown: string }) {
   );
 }
 
+function FavoriteIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      className="favorite-icon"
+      fill="none"
+      viewBox="0 0 24 24"
+    >
+      <path d="m12 3 2.7 5.5 6.1.9-4.4 4.3 1 6.1-5.4-2.9-5.4 2.9 1-6.1-4.4-4.3 6.1-.9L12 3Z" />
+    </svg>
+  );
+}
+
 function OrganizationActions({
   isOpen,
   onRequestDelete,
@@ -638,7 +651,7 @@ export default function Home() {
                           }
                           type="button"
                         >
-                          <span aria-hidden="true" className="pin-icon" />
+                          <FavoriteIcon />
                         </button>
 
                         <OrganizationActions
@@ -706,7 +719,7 @@ export default function Home() {
                                     aria-hidden="true"
                                     className="pinned-marker"
                                   >
-                                    <span className="pin-icon" />
+                                    <FavoriteIcon />
                                   </span>
                                 )}
                               </button>
