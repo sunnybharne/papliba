@@ -1,3 +1,23 @@
+* {
+  box-sizing: border-box;
+}
+
+:root {
+  font-family:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+  color: #172033;
+  background: #eef2f7;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  margin: 0;
+}
+
 .page {
   display: grid;
   min-height: 100vh;
@@ -11,7 +31,6 @@
   padding: 40px;
   border: 1px solid #d8e0eb;
   border-radius: 18px;
-  color: #172033;
   background: #ffffff;
   box-shadow: 0 18px 50px rgba(15, 23, 42, 0.08);
   text-align: center;

@@ -1,6 +1,6 @@
 # Papliba Web
 
-React + TypeScript frontend for Papliba.
+Next.js + React + TypeScript frontend for Papliba.
 
 ## Commands
 

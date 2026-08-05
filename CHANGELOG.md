@@ -13,3 +13,4 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 - Added changelog and release notes structure.
 - Added Husky and commitlint for local commit checks.
 - Added the first React Hello World screen.
+- Switched the frontend from Vite to Next.js.

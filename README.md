@@ -14,7 +14,7 @@ Papliba is not starting as an AI chat app. It is starting as a structured workfl
 
 ## Current Status
 
-This repository currently contains only the project foundation:
+This repository currently contains the project foundation and the first tiny frontend step:
 
 - project README
 - architecture diagram
@@ -22,11 +22,11 @@ This repository currently contains only the project foundation:
 - open-source license
 - contribution and security docs
 - Husky and commitlint setup
-- first React Hello World screen
+- first Next.js Hello World screen
 
-The first implementation is intentionally small: a React Hello World screen.
+The first implementation is intentionally small: a Next.js Hello World screen.
 
-The web frontend uses React + TypeScript + Vite. It does not use Next.js.
+The web frontend uses Next.js + React + TypeScript.
 
 ## Architecture
 
@@ -61,7 +61,7 @@ Run validation:
 npm run validate
 ```
 
-Run the React app:
+Run the Next.js app:
 
 ```bash
 npm run start:web
