@@ -114,19 +114,34 @@ a {
   min-height: 100vh;
   overflow: hidden;
   background: var(--panel);
+  transition: grid-template-columns 160ms ease;
 }
 
 .app-shell.sidebar-collapsed {
-  grid-template-columns: minmax(0, 1fr);
+  grid-template-columns: 0 minmax(0, 1fr);
 }
 
 .sidebar {
   display: grid;
   grid-template-rows: auto auto auto 1fr;
   gap: 14px;
+  min-width: 0;
   padding: 10px;
   border-right: 1px solid var(--border);
   background: var(--sidebar);
+  overflow: hidden;
+  transition:
+    opacity 120ms ease,
+    padding 160ms ease,
+    border-color 160ms ease;
+}
+
+.sidebar[data-open="false"] {
+  padding-right: 0;
+  padding-left: 0;
+  border-right-color: transparent;
+  opacity: 0;
+  pointer-events: none;
 }
 
 .brand-row {
@@ -265,6 +280,8 @@ kbd {
 .organization-list {
   display: grid;
   gap: 6px;
+  transform-origin: top;
+  animation: dropdown-enter 120ms ease-out;
 }
 
 .organization-search {
@@ -290,12 +307,25 @@ kbd {
 }
 
 .organization-arrow {
+  display: grid;
+  width: 16px;
+  height: 16px;
+  place-items: center;
   color: var(--muted);
-  text-align: center;
 }
 
-.organization-active[aria-expanded="true"] .organization-arrow {
-  transform: rotate(180deg);
+.organization-arrow::before {
+  width: 6px;
+  height: 6px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  content: "";
+  transform: rotate(45deg) translate(-1px, -1px);
+  transition: transform 120ms ease;
+}
+
+.organization-active[aria-expanded="true"] .organization-arrow::before {
+  transform: rotate(225deg) translate(-1px, -1px);
 }
 
 .organization-item:hover,
@@ -424,6 +454,8 @@ kbd {
   border-radius: 10px;
   background: var(--panel);
   box-shadow: var(--shadow);
+  transform-origin: bottom;
+  animation: dropdown-enter 120ms ease-out;
   z-index: 10;
 }
 
@@ -855,6 +887,14 @@ kbd {
     grid-template-columns: 1fr;
   }
 
+  .app-shell.sidebar-collapsed {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar[data-open="false"] {
+    display: none;
+  }
+
   .site-shell {
     grid-template-columns: 1fr;
   }
@@ -867,5 +907,30 @@ kbd {
   .content-area,
   .site-content {
     padding: 20px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-shell,
+  .sidebar,
+  .organization-arrow::before {
+    transition: none;
+  }
+
+  .organization-list,
+  .theme-menu {
+    animation: none;
+  }
+}
+
+@keyframes dropdown-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
   }
 }

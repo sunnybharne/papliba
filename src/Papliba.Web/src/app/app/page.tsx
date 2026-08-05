@@ -226,8 +226,12 @@ export default function Home() {
   return (
     <main className="shell">
       <section className={appShellClassName} aria-label="Papliba app">
-        {isSidebarOpen && (
-          <aside className="sidebar" aria-label="Papliba sidebar">
+          <aside
+            aria-hidden={!isSidebarOpen}
+            className="sidebar"
+            data-open={isSidebarOpen}
+            aria-label="Papliba sidebar"
+          >
             <div className="brand-row">
               <div className="brand-name">
                 <strong>Papliba</strong>
@@ -289,7 +293,10 @@ export default function Home() {
                         <span className="organization-text">
                           <strong>{activeOrganization.name}</strong>
                         </span>
-                        <span className="organization-arrow">⌄</span>
+                        <span
+                          aria-hidden="true"
+                          className="organization-arrow"
+                        />
                       </button>
                     )}
 
@@ -379,7 +386,6 @@ export default function Home() {
               <UserMenu onThemeChange={changeThemeMode} themeMode={themeMode} />
             </div>
           </aside>
-        )}
 
         <section className="workspace-panel">
           <header className="workspace-header">
