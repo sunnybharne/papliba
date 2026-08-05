@@ -174,13 +174,16 @@ export default function Home() {
         project.toLowerCase().includes(projectSearch.trim().toLowerCase()),
       )
     : activeProjects;
+  const selectableOrganizations = organizations.filter(
+    (organization) => organization.name !== activeOrganizationName,
+  );
   const visibleOrganizations = organizationSearch.trim()
-    ? organizations.filter((organization) =>
+    ? selectableOrganizations.filter((organization) =>
         organization.name
           .toLowerCase()
           .includes(organizationSearch.trim().toLowerCase()),
       )
-    : organizations;
+    : selectableOrganizations;
 
   function changeThemeMode(nextThemeMode: ThemeMode) {
     setThemeMode(nextThemeMode);
@@ -376,7 +379,11 @@ export default function Home() {
                         />
 
                         {visibleOrganizations.length === 0 ? (
-                          <p className="muted-copy">No organizations found.</p>
+                          <p className="muted-copy">
+                            {organizationSearch.trim()
+                              ? "No organizations found."
+                              : "No other organizations."}
+                          </p>
                         ) : (
                           visibleOrganizations.map((organization) => (
                             <button
