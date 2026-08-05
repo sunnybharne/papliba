@@ -349,7 +349,6 @@ export default function Home() {
   const [draftOrganizationName, setDraftOrganizationName] = useState("");
   const [organizationSearch, setOrganizationSearch] = useState("");
   const [projectName, setProjectName] = useState("");
-  const [projectSearch, setProjectSearch] = useState("");
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isOrganizationMenuOpen, setIsOrganizationMenuOpen] = useState(false);
   const [isOrganizationDialogOpen, setIsOrganizationDialogOpen] =
@@ -370,11 +369,6 @@ export default function Home() {
   const appShellClassName = isSidebarOpen
     ? "app-shell"
     : "app-shell sidebar-collapsed";
-  const visibleProjects = projectSearch.trim()
-    ? activeProjects.filter((project) =>
-        project.toLowerCase().includes(projectSearch.trim().toLowerCase()),
-      )
-    : activeProjects;
   const selectableOrganizations = organizations.filter(
     (organization) => organization.name !== activeOrganizationName,
   );
@@ -462,7 +456,6 @@ export default function Home() {
     setIsOrganizationMenuOpen(false);
     setOpenOrganizationActionsName("");
     setOrganizationSearch("");
-    setProjectSearch("");
   }
 
   function createOrganization(event: FormEvent<HTMLFormElement>) {
@@ -542,7 +535,6 @@ export default function Home() {
     setIsOrganizationMenuOpen(false);
     setOrganizationSearch("");
     setProjectName("");
-    setProjectSearch("");
 
     if (organizationName === activeOrganizationName) {
       setActiveOrganizationName(remainingOrganizations[0]?.name ?? "");
@@ -581,17 +573,6 @@ export default function Home() {
               >
                 ‹
               </button>
-            </div>
-
-            <div className="search-box">
-              <input
-                aria-label="Search projects"
-                onChange={(event) => setProjectSearch(event.target.value)}
-                placeholder="Search"
-                type="search"
-                value={projectSearch}
-              />
-              <kbd>⌘K</kbd>
             </div>
 
             <section className="sidebar-section">
@@ -706,7 +687,6 @@ export default function Home() {
                                   setOpenOrganizationActionsName("");
                                   setOrganizationSearch("");
                                   setProjectName("");
-                                  setProjectSearch("");
                                 }}
                                 type="button"
                               >
@@ -757,11 +737,11 @@ export default function Home() {
                   </button>
                 </div>
 
-                {visibleProjects.length === 0 ? (
+                {activeProjects.length === 0 ? (
                   <p className="muted-copy">No projects yet.</p>
                 ) : (
                   <div className="thread-list">
-                    {visibleProjects.map((project) => (
+                    {activeProjects.map((project) => (
                       <button
                         className="thread-item"
                         key={project}
@@ -861,7 +841,7 @@ Write goals, notes, or links here.
                   </section>
                 ) : (
                   <section className="activity-list">
-                    {visibleProjects.map((project) => (
+                    {activeProjects.map((project) => (
                       <article className="activity-card" key={project}>
                         <div className="activity-heading">
                           <span className="status-dot complete" />
