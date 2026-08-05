@@ -8,6 +8,7 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ### Changed
 
+- Reduced the height of the organization and user rows in the sidebar.
 - Replaced the default Next.js browser tab icon with a Papliba icon.
 - Refactored the app screen into smaller, easier-to-read UI components.
 - Replaced the organization pin icon with a cleaner favorite marker.

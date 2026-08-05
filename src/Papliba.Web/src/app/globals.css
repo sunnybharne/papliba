@@ -290,7 +290,7 @@ a {
 .organization-empty,
 .organization-item {
   display: grid;
-  grid-template-columns: 30px minmax(0, 1fr);
+  grid-template-columns: 26px minmax(0, 1fr);
   gap: 8px;
   align-items: center;
 }
@@ -337,8 +337,8 @@ a {
 
 .organization-empty,
 .organization-item {
-  min-height: 40px;
-  padding: 5px 6px;
+  min-height: 34px;
+  padding: 4px 6px;
   border: 0;
   border-radius: 9px;
   color: var(--text);
@@ -347,11 +347,11 @@ a {
 }
 
 .organization-active {
-  grid-template-columns: 30px minmax(0, 1fr) 20px;
+  grid-template-columns: 26px minmax(0, 1fr) 18px;
 }
 
 .organization-menu-item[data-pinned="true"] {
-  grid-template-columns: 30px minmax(0, 1fr) 18px;
+  grid-template-columns: 26px minmax(0, 1fr) 16px;
 }
 
 .organization-arrow {
@@ -384,7 +384,7 @@ a {
 .pin-button {
   display: grid;
   width: 28px;
-  height: 40px;
+  height: 34px;
   place-items: center;
   border: 0;
   border-radius: 9px;
@@ -395,7 +395,7 @@ a {
 .organization-more-button {
   display: grid;
   width: 28px;
-  height: 40px;
+  height: 34px;
   place-items: center;
   border: 0;
   border-radius: 9px;
@@ -478,8 +478,8 @@ a {
 }
 
 .project-icon {
-  width: 30px;
-  height: 30px;
+  width: 26px;
+  height: 26px;
 }
 
 .organization-pill strong,
@@ -566,12 +566,12 @@ a {
 
 .account-button {
   display: grid;
-  grid-template-columns: 28px minmax(0, 1fr);
+  grid-template-columns: 26px minmax(0, 1fr);
   gap: 8px;
   align-items: center;
   width: 100%;
-  min-height: 40px;
-  padding: 6px;
+  min-height: 34px;
+  padding: 4px 6px;
   border: 0;
   border-radius: 10px;
   color: var(--text);
@@ -584,8 +584,8 @@ a {
 }
 
 .avatar {
-  width: 28px;
-  height: 28px;
+  width: 26px;
+  height: 26px;
   font-size: 0.78rem;
 }
 
