@@ -28,7 +28,7 @@ type Organization = {
 
 type OrganizationActionsProps = {
   isOpen: boolean;
-  onDelete: (organizationName: string) => void;
+  onRequestDelete: (organizationName: string) => void;
   onToggle: (organizationName: string) => void;
   organizationName: string;
 };
@@ -94,7 +94,7 @@ function MarkdownPreview({ markdown }: { markdown: string }) {
 
 function OrganizationActions({
   isOpen,
-  onDelete,
+  onRequestDelete,
   onToggle,
   organizationName,
 }: OrganizationActionsProps) {
@@ -115,7 +115,7 @@ function OrganizationActions({
         <div className="organization-action-menu" role="menu">
           <button
             className="danger-menu-item"
-            onClick={() => onDelete(organizationName)}
+            onClick={() => onRequestDelete(organizationName)}
             role="menuitem"
             type="button"
           >
@@ -202,6 +202,8 @@ export default function Home() {
     useState(false);
   const [openOrganizationActionsName, setOpenOrganizationActionsName] =
     useState("");
+  const [deleteOrganizationName, setDeleteOrganizationName] = useState("");
+  const [deleteConfirmationText, setDeleteConfirmationText] = useState("");
   const [organizationNameError, setOrganizationNameError] = useState("");
 
   const activeOrganization = organizations.find(
@@ -233,6 +235,9 @@ export default function Home() {
     ...matchingOrganizations.filter((organization) => organization.isPinned),
     ...matchingOrganizations.filter((organization) => !organization.isPinned),
   ];
+  const canDeleteOrganization =
+    deleteOrganizationName.length > 0 &&
+    deleteConfirmationText === deleteOrganizationName;
 
   function changeThemeMode(nextThemeMode: ThemeMode) {
     setThemeMode(nextThemeMode);
@@ -243,6 +248,8 @@ export default function Home() {
     setDraftOrganizationName("");
     setOrganizationSearch("");
     setOpenOrganizationActionsName("");
+    setDeleteOrganizationName("");
+    setDeleteConfirmationText("");
     setOrganizationNameError("");
     setIsOrganizationMenuOpen(false);
     setIsOrganizationDialogOpen(true);
@@ -260,6 +267,17 @@ export default function Home() {
     setOpenOrganizationActionsName((currentOrganizationName) => {
       return currentOrganizationName === organizationName ? "" : organizationName;
     });
+  }
+
+  function openDeleteOrganizationDialog(organizationName: string) {
+    setDeleteOrganizationName(organizationName);
+    setDeleteConfirmationText("");
+    setOpenOrganizationActionsName("");
+  }
+
+  function closeDeleteOrganizationDialog() {
+    setDeleteOrganizationName("");
+    setDeleteConfirmationText("");
   }
 
   function createOrganizationFromInput() {
@@ -365,6 +383,8 @@ export default function Home() {
 
     setOrganizations(remainingOrganizations);
     setOpenOrganizationActionsName("");
+    setDeleteOrganizationName("");
+    setDeleteConfirmationText("");
     setIsOrganizationMenuOpen(false);
     setOrganizationSearch("");
     setProjectName("");
@@ -373,6 +393,16 @@ export default function Home() {
     if (organizationName === activeOrganizationName) {
       setActiveOrganizationName(remainingOrganizations[0]?.name ?? "");
     }
+  }
+
+  function confirmDeleteOrganization(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!canDeleteOrganization) {
+      return;
+    }
+
+    deleteOrganization(deleteOrganizationName);
   }
 
   return (
@@ -473,7 +503,7 @@ export default function Home() {
                           isOpen={
                             openOrganizationActionsName === activeOrganization.name
                           }
-                          onDelete={deleteOrganization}
+                          onRequestDelete={openDeleteOrganizationDialog}
                           onToggle={toggleOrganizationActions}
                           organizationName={activeOrganization.name}
                         />
@@ -545,7 +575,7 @@ export default function Home() {
                                   openOrganizationActionsName ===
                                   organization.name
                                 }
-                                onDelete={deleteOrganization}
+                                onRequestDelete={openDeleteOrganizationDialog}
                                 onToggle={toggleOrganizationActions}
                                 organizationName={organization.name}
                               />
@@ -762,6 +792,60 @@ Write goals, notes, or links here.
                 </button>
                 <button className="primary-button" type="submit">
                   Create
+                </button>
+              </div>
+            </form>
+          </section>
+        </div>
+      )}
+
+      {deleteOrganizationName && (
+        <div className="dialog-backdrop">
+          <section
+            aria-labelledby="delete-organization-dialog-title"
+            className="dialog-panel"
+            role="dialog"
+          >
+            <h2 id="delete-organization-dialog-title">Delete organization</h2>
+            <p>
+              This will delete <strong>{deleteOrganizationName}</strong> and its
+              local projects.
+            </p>
+
+            <form className="dialog-form" onSubmit={confirmDeleteOrganization}>
+              <label
+                className="delete-confirmation-label"
+                htmlFor="delete-organization-confirmation"
+              >
+                Type <strong>{deleteOrganizationName}</strong> to confirm.
+              </label>
+              <input
+                autoFocus
+                aria-label="Organization name confirmation"
+                id="delete-organization-confirmation"
+                onChange={(event) =>
+                  setDeleteConfirmationText(event.target.value)
+                }
+                placeholder={deleteOrganizationName}
+                spellCheck="false"
+                type="text"
+                value={deleteConfirmationText}
+              />
+
+              <div className="dialog-actions">
+                <button
+                  className="ghost-button"
+                  onClick={closeDeleteOrganizationDialog}
+                  type="button"
+                >
+                  Cancel
+                </button>
+                <button
+                  className="danger-button"
+                  disabled={!canDeleteOrganization}
+                  type="submit"
+                >
+                  Delete
                 </button>
               </div>
             </form>

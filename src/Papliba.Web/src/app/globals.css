@@ -934,6 +934,11 @@ kbd {
   line-height: 1.45;
 }
 
+.dialog-panel strong,
+.delete-confirmation-label strong {
+  color: var(--text);
+}
+
 .dialog-form {
   display: grid;
   gap: 14px;
@@ -958,6 +963,11 @@ kbd {
   font-size: 0.85rem;
 }
 
+.delete-confirmation-label {
+  color: var(--muted);
+  line-height: 1.45;
+}
+
 .dialog-actions {
   display: flex;
   justify-content: flex-end;
@@ -976,6 +986,24 @@ kbd {
   background: var(--button);
   font-weight: 700;
   text-decoration: none;
+}
+
+.danger-button {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 9px;
+  color: #ffffff;
+  background: #dc2626;
+  font-weight: 700;
+}
+
+.danger-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
 }
 
 .site-shell {

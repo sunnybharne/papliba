@@ -21,6 +21,7 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 - Hid the selected organization from the organization dropdown.
 - Made the sidebar and organization search inputs more compact.
+- Required typing the organization name before deleting it.
 
 ## [0.1.0] - 2026-08-05
 
