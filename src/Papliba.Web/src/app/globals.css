@@ -240,6 +240,28 @@ a {
   opacity: 0.78;
 }
 
+.sidebar-layout-icon-pane {
+  fill: currentColor;
+  stroke: none;
+  opacity: 0.14;
+}
+
+.sidebar-layout-icon-pane,
+.sidebar-layout-icon-divider {
+  transition:
+    opacity 160ms ease,
+    transform 160ms ease;
+}
+
+.sidebar-layout-icon[data-open="false"] .sidebar-layout-icon-pane,
+.sidebar-layout-icon[data-open="false"] .sidebar-layout-icon-divider {
+  transform: translateX(5px);
+}
+
+.sidebar-layout-icon[data-open="false"] .sidebar-layout-icon-pane {
+  opacity: 0.08;
+}
+
 .sidebar-toggle:hover .sidebar-layout-icon {
   opacity: 1;
 }
@@ -1761,6 +1783,8 @@ a {
 @media (prefers-reduced-motion: reduce) {
   .app-shell,
   .sidebar,
+  .sidebar-layout-icon-pane,
+  .sidebar-layout-icon-divider,
   .organization-arrow::before {
     transition: none;
   }

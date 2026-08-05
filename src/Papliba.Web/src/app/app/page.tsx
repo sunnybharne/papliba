@@ -105,16 +105,25 @@ function FavoriteIcon() {
   );
 }
 
-function SidebarToggleIcon() {
+function SidebarToggleIcon({ isOpen }: { isOpen: boolean }) {
   return (
     <svg
       aria-hidden="true"
       className="sidebar-layout-icon"
+      data-open={isOpen}
       fill="none"
       viewBox="0 0 24 24"
     >
       <rect height="14" rx="3" width="18" x="3" y="5" />
-      <path d="M9 5v14" />
+      <rect
+        className="sidebar-layout-icon-pane"
+        height="10"
+        rx="1.5"
+        width="4"
+        x="5.5"
+        y="7"
+      />
+      <path className="sidebar-layout-icon-divider" d="M9 5v14" />
     </svg>
   );
 }
@@ -614,7 +623,7 @@ export default function Home() {
                 onClick={toggleSidebar}
                 type="button"
               >
-                <SidebarToggleIcon />
+                <SidebarToggleIcon isOpen={isSidebarOpen} />
               </button>
             </div>
 
