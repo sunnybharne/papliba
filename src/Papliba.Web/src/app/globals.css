@@ -248,6 +248,7 @@ a {
 .sidebar-toggle:hover,
 .thread-item:hover,
 .account-button:hover,
+.organization-empty:hover,
 .account-menu-item:hover,
 .account-menu-user:hover,
 .theme-option:hover,
@@ -601,13 +602,12 @@ a {
   text-align: left;
 }
 
-.sidebar[data-open="false"] .brand-row,
-.sidebar[data-open="false"] .section-title {
+.sidebar[data-open="false"] .brand-row {
   justify-content: center;
 }
 
 .sidebar[data-open="false"] .brand-name,
-.sidebar[data-open="false"] .section-title span,
+.sidebar[data-open="false"] .section-title,
 .sidebar[data-open="false"] .organization-empty div,
 .sidebar[data-open="false"] .organization-text,
 .sidebar[data-open="false"] .organization-arrow,

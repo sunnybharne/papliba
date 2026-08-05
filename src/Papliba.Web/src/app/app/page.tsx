@@ -423,6 +423,10 @@ export default function Home() {
     setIsSidebarOpen((currentIsSidebarOpen) => !currentIsSidebarOpen);
   }
 
+  function openSidebar() {
+    setIsSidebarOpen(true);
+  }
+
   function openOrganizationDialog() {
     setDraftOrganizationName("");
     setOrganizationSearch("");
@@ -440,6 +444,15 @@ export default function Home() {
     setIsOrganizationMenuOpen((currentIsOrganizationMenuOpen) => {
       return !currentIsOrganizationMenuOpen;
     });
+  }
+
+  function openSidebarOrToggleOrganizationMenu() {
+    if (!isSidebarOpen) {
+      openSidebar();
+      return;
+    }
+
+    toggleOrganizationMenu();
   }
 
   function toggleOrganizationActions(organizationName: string) {
@@ -620,21 +633,33 @@ export default function Home() {
 
               <div className="organization-pill">
                 {organizations.length === 0 ? (
-                  <div className="organization-empty">
-                    <span className="project-icon">P</span>
-                    <div>
-                      <strong>No organization</strong>
-                      <small>Create one</small>
+                  isSidebarOpen ? (
+                    <div className="organization-empty">
+                      <span className="project-icon">P</span>
+                      <div>
+                        <strong>No organization</strong>
+                      </div>
                     </div>
-                  </div>
+                  ) : (
+                    <button
+                      aria-label="Open sidebar"
+                      className="organization-empty"
+                      onClick={openSidebar}
+                      type="button"
+                    >
+                      <span className="project-icon">P</span>
+                    </button>
+                  )
                 ) : (
                   <div className="organization-select">
                     {activeOrganization && (
                       <div className="organization-active-row">
                         <button
-                          aria-expanded={isOrganizationMenuOpen}
+                          aria-expanded={
+                            isSidebarOpen && isOrganizationMenuOpen
+                          }
                           className="organization-item organization-active"
-                          onClick={toggleOrganizationMenu}
+                          onClick={openSidebarOrToggleOrganizationMenu}
                           type="button"
                         >
                           <span className="project-icon">P</span>
@@ -675,7 +700,7 @@ export default function Home() {
                       </div>
                     )}
 
-                    {isOrganizationMenuOpen && (
+                    {isSidebarOpen && isOrganizationMenuOpen && (
                       <div className="organization-list">
                         <input
                           aria-label="Search organizations"
