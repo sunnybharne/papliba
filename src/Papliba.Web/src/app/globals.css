@@ -119,7 +119,7 @@ a {
 }
 
 .app-shell.sidebar-collapsed {
-  grid-template-columns: 0 minmax(0, 1fr);
+  grid-template-columns: 56px minmax(0, 1fr);
 }
 
 .sidebar {
@@ -132,17 +132,13 @@ a {
   background: var(--sidebar);
   overflow: hidden;
   transition:
-    opacity 120ms ease,
     padding 160ms ease,
     border-color 160ms ease;
 }
 
 .sidebar[data-open="false"] {
-  padding-right: 0;
-  padding-left: 0;
-  border-right-color: transparent;
-  opacity: 0;
-  pointer-events: none;
+  padding-right: 8px;
+  padding-left: 8px;
 }
 
 .brand-row {
@@ -529,15 +525,27 @@ a {
 
 .thread-item {
   display: grid;
-  grid-template-columns: 8px minmax(0, 1fr);
+  grid-template-columns: 28px minmax(0, 1fr);
   gap: 8px;
-  align-items: start;
+  align-items: center;
   min-height: 40px;
   padding: 6px;
   border: 0;
   border-radius: 10px;
   background: transparent;
   text-align: left;
+}
+
+.project-list-icon {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border-radius: 8px;
+  color: var(--muted);
+  background: var(--quiet-surface);
+  font-size: 0.78rem;
+  font-weight: 800;
 }
 
 .status-dot {
@@ -552,6 +560,7 @@ a {
 }
 
 .sidebar-footer {
+  grid-row: -1;
   align-self: end;
 }
 
@@ -617,6 +626,58 @@ a {
   color: var(--text);
   background: transparent;
   text-align: left;
+}
+
+.sidebar[data-open="false"] .brand-row,
+.sidebar[data-open="false"] .section-title {
+  justify-content: center;
+}
+
+.sidebar[data-open="false"] .brand-name,
+.sidebar[data-open="false"] .section-title span,
+.sidebar[data-open="false"] .organization-empty div,
+.sidebar[data-open="false"] .organization-text,
+.sidebar[data-open="false"] .organization-arrow,
+.sidebar[data-open="false"] .pin-button,
+.sidebar[data-open="false"] .organization-actions,
+.sidebar[data-open="false"] .organization-list,
+.sidebar[data-open="false"] .thread-item > span:last-child,
+.sidebar[data-open="false"] .muted-copy,
+.sidebar[data-open="false"] .account-button > span:not(.avatar) {
+  display: none;
+}
+
+.sidebar[data-open="false"] .sidebar-section,
+.sidebar[data-open="false"] .thread-list {
+  justify-items: center;
+}
+
+.sidebar[data-open="false"] .organization-pill,
+.sidebar[data-open="false"] .organization-select,
+.sidebar[data-open="false"] .organization-active-row,
+.sidebar[data-open="false"] .thread-list,
+.sidebar[data-open="false"] .user-menu {
+  width: 100%;
+}
+
+.sidebar[data-open="false"] .organization-empty,
+.sidebar[data-open="false"] .organization-item,
+.sidebar[data-open="false"] .thread-item,
+.sidebar[data-open="false"] .account-button {
+  grid-template-columns: 1fr;
+  justify-items: center;
+  padding-right: 5px;
+  padding-left: 5px;
+}
+
+.sidebar[data-open="false"] .organization-active-row {
+  grid-template-columns: 1fr;
+}
+
+.sidebar[data-open="false"] .account-menu {
+  right: auto;
+  bottom: 0;
+  left: calc(100% + 8px);
 }
 
 .account-menu-user strong,
@@ -1697,11 +1758,7 @@ a {
   }
 
   .app-shell.sidebar-collapsed {
-    grid-template-columns: 1fr;
-  }
-
-  .sidebar[data-open="false"] {
-    display: none;
+    grid-template-columns: 56px minmax(0, 1fr);
   }
 
   .site-shell {
@@ -1711,6 +1768,11 @@ a {
   .sidebar {
     border-right: 0;
     border-bottom: 1px solid var(--border);
+  }
+
+  .sidebar[data-open="false"] {
+    border-right: 1px solid var(--border);
+    border-bottom: 0;
   }
 
   .content-area,

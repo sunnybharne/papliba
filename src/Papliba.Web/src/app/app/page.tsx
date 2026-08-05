@@ -392,6 +392,10 @@ export default function Home() {
     applyThemeMode(nextThemeMode);
   }
 
+  function toggleSidebar() {
+    setIsSidebarOpen((currentIsSidebarOpen) => !currentIsSidebarOpen);
+  }
+
   function openOrganizationDialog() {
     setDraftOrganizationName("");
     setOrganizationSearch("");
@@ -555,7 +559,6 @@ export default function Home() {
     <main className="shell">
       <section className={appShellClassName} aria-label="Papliba app">
           <aside
-            aria-hidden={!isSidebarOpen}
             className="sidebar"
             data-open={isSidebarOpen}
             aria-label="Papliba sidebar"
@@ -566,12 +569,16 @@ export default function Home() {
                 <span>alpha</span>
               </div>
               <button
-                aria-label="Collapse sidebar"
+                aria-label={isSidebarOpen ? "Collapse sidebar" : "Open sidebar"}
                 className="sidebar-toggle"
-                onClick={() => setIsSidebarOpen(false)}
+                onClick={toggleSidebar}
                 type="button"
               >
-                ‹
+                {isSidebarOpen ? (
+                  "‹"
+                ) : (
+                  <span aria-hidden="true" className="sidebar-open-icon" />
+                )}
               </button>
             </div>
 
@@ -747,7 +754,9 @@ export default function Home() {
                         key={project}
                         type="button"
                       >
-                        <span className="status-dot complete" />
+                        <span className="project-list-icon">
+                          {project.slice(0, 1).toUpperCase()}
+                        </span>
                         <span>
                           <strong>{project}</strong>
                           <small>Completed · just now</small>
@@ -767,16 +776,6 @@ export default function Home() {
         <section className="workspace-panel">
           <header className="workspace-header">
             <div className="workspace-title-row">
-              {!isSidebarOpen && (
-                <button
-                  aria-label="Open sidebar"
-                  className="sidebar-toggle"
-                  onClick={() => setIsSidebarOpen(true)}
-                  type="button"
-                >
-                  <span aria-hidden="true" className="sidebar-open-icon" />
-                </button>
-              )}
               <div className="workspace-title-text">
                 <span>
                   {hasOrganization ? "Organization" : "No active organization"}

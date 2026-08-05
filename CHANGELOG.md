@@ -26,6 +26,7 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 - Made the sidebar and organization search inputs more compact.
 - Required typing the organization name before deleting it.
 - Removed the extra sidebar project search field.
+- Changed the collapsed sidebar into a compact icon rail.
 
 ## [0.1.0] - 2026-08-05
 
