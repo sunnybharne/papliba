@@ -8,6 +8,7 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ### Changed
 
+- Refactored the app screen into smaller, easier-to-read UI components.
 - Replaced the organization pin icon with a cleaner favorite marker.
 - Replaced the sidebar collapse icon with a cleaner sidebar layout marker.
 - Added open/closed animation to the sidebar layout icon.

@@ -1,37 +1,17 @@
 "use client";
 
-import { FormEvent, useRef, useState } from "react";
+import { type FormEvent, useRef, useState } from "react";
 
-const themeStorageKey = "papliba-theme";
-
-const themeOptions = [
-  { label: "System", value: "system" },
-  { label: "Light", value: "light" },
-  { label: "Dark", value: "dark" },
-] as const;
-
-const userName = "Sunny Bharne";
-const userInitials = "SB";
-const organizationNameHelp =
-  "Use 3-30 lowercase letters, numbers, or hyphens. No spaces.";
-const organizationNameErrorMessage = "Enter a valid organization name.";
-const organizationNamePattern = /^[a-z0-9][a-z0-9-]{1,28}[a-z0-9]$/;
-
-type ThemeMode = (typeof themeOptions)[number]["value"];
-
-type Organization = {
-  details: string;
-  isPinned: boolean;
-  name: string;
-  projects: string[];
-};
-
-type OrganizationActionsProps = {
-  isOpen: boolean;
-  onRequestDelete: (organizationName: string) => void;
-  onToggle: (organizationName: string) => void;
-  organizationName: string;
-};
+import { CreateOrganizationDialog } from "./_components/CreateOrganizationDialog";
+import { DeleteOrganizationDialog } from "./_components/DeleteOrganizationDialog";
+import { Sidebar } from "./_components/Sidebar";
+import { WorkspacePanel } from "./_components/WorkspacePanel";
+import {
+  organizationNameErrorMessage,
+  organizationNamePattern,
+  themeStorageKey,
+} from "./constants";
+import type { Organization, ThemeMode } from "./types";
 
 function isThemeMode(value: string | null): value is ThemeMode {
   return value === "system" || value === "light" || value === "dark";
@@ -48,325 +28,25 @@ function applyThemeMode(themeMode: ThemeMode) {
   window.localStorage.setItem(themeStorageKey, themeMode);
 }
 
-function MarkdownPreview({ markdown }: { markdown: string }) {
-  const lines = markdown
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean);
+function getVisibleOrganizations(
+  organizations: Organization[],
+  activeOrganizationName: string,
+  organizationSearch: string,
+) {
+  const searchText = organizationSearch.trim().toLowerCase();
+  const matchingOrganizations = organizations
+    .filter((organization) => organization.name !== activeOrganizationName)
+    .filter((organization) => {
+      return (
+        searchText.length === 0 ||
+        organization.name.toLowerCase().includes(searchText)
+      );
+    });
 
-  if (lines.length === 0) {
-    return (
-      <div className="organization-markdown-preview">
-        <p className="muted-copy">No organization details yet.</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="organization-markdown-preview">
-      {lines.map((line, index) => {
-        if (line.startsWith("### ")) {
-          return <h4 key={index}>{line.slice(4)}</h4>;
-        }
-
-        if (line.startsWith("## ")) {
-          return <h3 key={index}>{line.slice(3)}</h3>;
-        }
-
-        if (line.startsWith("# ")) {
-          return <h2 key={index}>{line.slice(2)}</h2>;
-        }
-
-        if (line.startsWith("- ")) {
-          return (
-            <p className="markdown-list-item" key={index}>
-              <span aria-hidden="true" className="markdown-bullet" />
-              {line.slice(2)}
-            </p>
-          );
-        }
-
-        return <p key={index}>{line}</p>;
-      })}
-    </div>
-  );
-}
-
-function FavoriteIcon() {
-  return (
-    <svg
-      aria-hidden="true"
-      className="favorite-icon"
-      fill="none"
-      viewBox="0 0 24 24"
-    >
-      <path d="m12 3 2.7 5.5 6.1.9-4.4 4.3 1 6.1-5.4-2.9-5.4 2.9 1-6.1-4.4-4.3 6.1-.9L12 3Z" />
-    </svg>
-  );
-}
-
-function SidebarToggleIcon({ isOpen }: { isOpen: boolean }) {
-  return (
-    <svg
-      aria-hidden="true"
-      className="sidebar-layout-icon"
-      data-open={isOpen}
-      fill="none"
-      viewBox="0 0 24 24"
-    >
-      <rect height="14" rx="3" width="18" x="3" y="5" />
-      <rect
-        className="sidebar-layout-icon-pane"
-        height="10"
-        rx="1.5"
-        width="4"
-        x="5.5"
-        y="7"
-      />
-      <path className="sidebar-layout-icon-divider" d="M9 5v14" />
-    </svg>
-  );
-}
-
-function OrganizationActions({
-  isOpen,
-  onRequestDelete,
-  onToggle,
-  organizationName,
-}: OrganizationActionsProps) {
-  return (
-    <div className="organization-actions">
-      <button
-        aria-expanded={isOpen}
-        aria-haspopup="menu"
-        aria-label={`Open ${organizationName} actions`}
-        className="organization-more-button"
-        onClick={() => onToggle(organizationName)}
-        type="button"
-      >
-        <span aria-hidden="true">...</span>
-      </button>
-
-      {isOpen && (
-        <div className="organization-action-menu" role="menu">
-          <button
-            className="danger-menu-item"
-            onClick={() => onRequestDelete(organizationName)}
-            role="menuitem"
-            type="button"
-          >
-            Delete
-          </button>
-        </div>
-      )}
-    </div>
-  );
-}
-
-type UserMenuProps = {
-  onThemeChange: (themeMode: ThemeMode) => void;
-  themeMode: ThemeMode;
-};
-
-type SettingsSection = "account" | "appearance";
-
-function UserMenu({ onThemeChange, themeMode }: UserMenuProps) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [isThemeMenuOpen, setIsThemeMenuOpen] = useState(false);
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [settingsSection, setSettingsSection] =
-    useState<SettingsSection>("account");
-
-  const activeThemeLabel =
-    themeOptions.find((option) => option.value === themeMode)?.label ?? "System";
-
-  function changeTheme(nextThemeMode: ThemeMode) {
-    onThemeChange(nextThemeMode);
-    setIsThemeMenuOpen(false);
-    setIsOpen(false);
-  }
-
-  function openSettings(nextSettingsSection: SettingsSection) {
-    setSettingsSection(nextSettingsSection);
-    setIsOpen(false);
-    setIsThemeMenuOpen(false);
-    setIsSettingsOpen(true);
-  }
-
-  return (
-    <div className="user-menu">
-      <button
-        aria-expanded={isOpen}
-        aria-haspopup="menu"
-        aria-label="Open account menu"
-        className="account-button"
-        onClick={() => setIsOpen((currentIsOpen) => !currentIsOpen)}
-        type="button"
-      >
-        <span className="avatar">{userInitials}</span>
-        <span>
-          <strong>{userName}</strong>
-        </span>
-      </button>
-
-      {isOpen && (
-        <div className="account-menu" role="menu">
-          <button
-            className="account-menu-user"
-            onClick={() => openSettings("account")}
-            role="menuitem"
-            type="button"
-          >
-            <span className="avatar">{userInitials}</span>
-            <span>
-              <strong>{userName}</strong>
-              <small>Local profile</small>
-            </span>
-          </button>
-
-          <button
-            aria-expanded={isThemeMenuOpen}
-            aria-haspopup="menu"
-            className="account-menu-item"
-            onClick={() =>
-              setIsThemeMenuOpen(
-                (currentIsThemeMenuOpen) => !currentIsThemeMenuOpen,
-              )
-            }
-            role="menuitem"
-            type="button"
-          >
-            <span>Theme</span>
-            <small>{activeThemeLabel}</small>
-            <span aria-hidden="true" className="menu-chevron">
-              ›
-            </span>
-          </button>
-
-          {isThemeMenuOpen && (
-            <div className="theme-choice-list">
-              {themeOptions.map((option) => (
-                <button
-                  aria-checked={themeMode === option.value}
-                  className="theme-option"
-                  data-active={themeMode === option.value}
-                  key={option.value}
-                  onClick={() => changeTheme(option.value)}
-                  role="menuitemradio"
-                  type="button"
-                >
-                  {option.label}
-                </button>
-              ))}
-            </div>
-          )}
-
-          <button
-            className="account-menu-item"
-            onClick={() => openSettings("account")}
-            role="menuitem"
-            type="button"
-          >
-            <span>Settings</span>
-            <small>Account and app</small>
-            <span aria-hidden="true" className="menu-chevron">
-              ›
-            </span>
-          </button>
-        </div>
-      )}
-
-      {isSettingsOpen && (
-        <div className="dialog-backdrop">
-          <section
-            aria-modal="true"
-            aria-labelledby="settings-dialog-title"
-            className="settings-window"
-            role="dialog"
-          >
-            <aside className="settings-sidebar" aria-label="Settings sections">
-              <div className="settings-user-card">
-                <span className="avatar">{userInitials}</span>
-                <span>
-                  <strong>{userName}</strong>
-                  <small>Local profile</small>
-                </span>
-              </div>
-
-              <button
-                className="settings-nav-item"
-                data-active={settingsSection === "account"}
-                onClick={() => setSettingsSection("account")}
-                type="button"
-              >
-                Account
-              </button>
-              <button
-                className="settings-nav-item"
-                data-active={settingsSection === "appearance"}
-                onClick={() => setSettingsSection("appearance")}
-                type="button"
-              >
-                Appearance
-              </button>
-            </aside>
-
-            <section className="settings-content">
-              <header className="settings-titlebar">
-                <div>
-                  <span>Settings</span>
-                  <h2 id="settings-dialog-title">
-                    {settingsSection === "account" ? "Account" : "Appearance"}
-                  </h2>
-                </div>
-                <button
-                  aria-label="Close settings"
-                  className="settings-close-button"
-                  onClick={() => setIsSettingsOpen(false)}
-                  type="button"
-                >
-                  ×
-                </button>
-              </header>
-
-              {settingsSection === "account" ? (
-                <div className="settings-panel">
-                  <div className="settings-row">
-                    <span>Name</span>
-                    <strong>{userName}</strong>
-                  </div>
-                  <div className="settings-row">
-                    <span>Profile type</span>
-                    <strong>Local profile</strong>
-                  </div>
-                </div>
-              ) : (
-                <div className="settings-panel">
-                  <div className="settings-row">
-                    <span>Theme</span>
-                    <strong>{activeThemeLabel}</strong>
-                  </div>
-                  <div className="settings-theme-grid">
-                    {themeOptions.map((option) => (
-                      <button
-                        className="settings-theme-option"
-                        data-active={themeMode === option.value}
-                        key={option.value}
-                        onClick={() => onThemeChange(option.value)}
-                        type="button"
-                      >
-                        {option.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </section>
-          </section>
-        </div>
-      )}
-    </div>
-  );
+  return [
+    ...matchingOrganizations.filter((organization) => organization.isPinned),
+    ...matchingOrganizations.filter((organization) => !organization.isPinned),
+  ];
 }
 
 export default function Home() {
@@ -395,30 +75,20 @@ export default function Home() {
   const [deleteConfirmationText, setDeleteConfirmationText] = useState("");
   const [organizationNameError, setOrganizationNameError] = useState("");
 
-  const activeOrganization = organizations.find(
-    (organization) => organization.name === activeOrganizationName,
-  );
+  const activeOrganization = organizations.find((organization) => {
+    return organization.name === activeOrganizationName;
+  });
   const hasOrganization = activeOrganization !== undefined;
-  const activeOrganizationDisplayName = activeOrganization?.name ?? "";
   const activeOrganizationDetails = activeOrganization?.details ?? "";
   const activeProjects = activeOrganization?.projects ?? [];
   const appShellClassName = isSidebarOpen
     ? "app-shell"
     : "app-shell sidebar-collapsed";
-  const selectableOrganizations = organizations.filter(
-    (organization) => organization.name !== activeOrganizationName,
+  const visibleOrganizations = getVisibleOrganizations(
+    organizations,
+    activeOrganizationName,
+    organizationSearch,
   );
-  const matchingOrganizations = organizationSearch.trim()
-    ? selectableOrganizations.filter((organization) =>
-        organization.name
-          .toLowerCase()
-          .includes(organizationSearch.trim().toLowerCase()),
-      )
-    : selectableOrganizations;
-  const visibleOrganizations = [
-    ...matchingOrganizations.filter((organization) => organization.isPinned),
-    ...matchingOrganizations.filter((organization) => !organization.isPinned),
-  ];
   const canDeleteOrganization =
     deleteOrganizationName.length > 0 &&
     deleteConfirmationText === deleteOrganizationName;
@@ -447,6 +117,15 @@ export default function Home() {
     setIsOrganizationDialogOpen(true);
   }
 
+  function closeOrganizationDialog() {
+    setIsOrganizationDialogOpen(false);
+  }
+
+  function updateDraftOrganizationName(organizationName: string) {
+    setDraftOrganizationName(organizationName.toLowerCase());
+    setOrganizationNameError("");
+  }
+
   function toggleOrganizationMenu() {
     setOrganizationSearch("");
     setOpenOrganizationActionsName("");
@@ -462,6 +141,14 @@ export default function Home() {
     }
 
     toggleOrganizationMenu();
+  }
+
+  function selectOrganization(organizationName: string) {
+    setActiveOrganizationName(organizationName);
+    setIsOrganizationMenuOpen(false);
+    setOpenOrganizationActionsName("");
+    setOrganizationSearch("");
+    setProjectName("");
   }
 
   function toggleOrganizationActions(organizationName: string) {
@@ -489,18 +176,19 @@ export default function Home() {
       return;
     }
 
-    if (
-      organizations.some(
-        (organization) => organization.name === nextOrganizationName,
-      )
-    ) {
+    if (organizations.some((org) => org.name === nextOrganizationName)) {
       setOrganizationNameError("An organization with this name already exists.");
       return;
     }
 
     setOrganizations((currentOrganizations) => [
       ...currentOrganizations,
-      { details: "", isPinned: false, name: nextOrganizationName, projects: [] },
+      {
+        details: "",
+        isPinned: false,
+        name: nextOrganizationName,
+        projects: [],
+      },
     ]);
     setActiveOrganizationName(nextOrganizationName);
     setDraftOrganizationName("");
@@ -607,438 +295,61 @@ export default function Home() {
   return (
     <main className="shell">
       <section className={appShellClassName} aria-label="Papliba app">
-          <aside
-            className="sidebar"
-            data-open={isSidebarOpen}
-            aria-label="Papliba sidebar"
-          >
-            <div className="brand-row">
-              <div className="brand-name">
-                <strong>Papliba</strong>
-                <span>alpha</span>
-              </div>
-              <button
-                aria-label={isSidebarOpen ? "Collapse sidebar" : "Open sidebar"}
-                className="sidebar-toggle"
-                onClick={toggleSidebar}
-                type="button"
-              >
-                <SidebarToggleIcon isOpen={isSidebarOpen} />
-              </button>
-            </div>
+        <Sidebar
+          activeOrganization={activeOrganization}
+          activeProjects={activeProjects}
+          isOrganizationMenuOpen={isOrganizationMenuOpen}
+          isSidebarOpen={isSidebarOpen}
+          onCreateOrganization={openOrganizationDialog}
+          onCreateProject={createProjectFromInput}
+          onOpenDeleteOrganizationDialog={openDeleteOrganizationDialog}
+          onOpenSidebar={openSidebar}
+          onOrganizationSearchChange={setOrganizationSearch}
+          onSelectOrganization={selectOrganization}
+          onThemeChange={changeThemeMode}
+          onToggleOrganizationActions={toggleOrganizationActions}
+          onToggleOrganizationMenu={openSidebarOrToggleOrganizationMenu}
+          onToggleOrganizationPin={toggleOrganizationPin}
+          onToggleSidebar={toggleSidebar}
+          openOrganizationActionsName={openOrganizationActionsName}
+          organizationSearch={organizationSearch}
+          organizations={organizations}
+          themeMode={themeMode}
+          visibleOrganizations={visibleOrganizations}
+        />
 
-            <section className="sidebar-section">
-              <div className="section-title">
-                <span>Organization</span>
-                <button
-                  aria-label="Create organization"
-                  className="icon-button"
-                  onClick={openOrganizationDialog}
-                  type="button"
-                >
-                  +
-                </button>
-              </div>
-
-              <div className="organization-pill">
-                {organizations.length === 0 ? (
-                  isSidebarOpen ? (
-                    <div className="organization-empty">
-                      <span className="project-icon">P</span>
-                      <div>
-                        <strong>No organization</strong>
-                      </div>
-                    </div>
-                  ) : (
-                    <button
-                      aria-label="Open sidebar"
-                      className="organization-empty"
-                      onClick={openSidebar}
-                      type="button"
-                    >
-                      <span className="project-icon">P</span>
-                    </button>
-                  )
-                ) : (
-                  <div className="organization-select">
-                    {activeOrganization && (
-                      <div className="organization-active-row">
-                        <button
-                          aria-expanded={
-                            isSidebarOpen && isOrganizationMenuOpen
-                          }
-                          className="organization-item organization-active"
-                          onClick={openSidebarOrToggleOrganizationMenu}
-                          type="button"
-                        >
-                          <span className="project-icon">P</span>
-                          <span className="organization-text">
-                            <strong>{activeOrganization.name}</strong>
-                          </span>
-                          <span
-                            aria-hidden="true"
-                            className="organization-arrow"
-                          />
-                        </button>
-
-                        <button
-                          aria-label={
-                            activeOrganization.isPinned
-                              ? "Unpin organization"
-                              : "Pin organization"
-                          }
-                          aria-pressed={activeOrganization.isPinned}
-                          className="pin-button"
-                          data-pinned={activeOrganization.isPinned}
-                          onClick={() =>
-                            toggleOrganizationPin(activeOrganization.name)
-                          }
-                          type="button"
-                        >
-                          <FavoriteIcon />
-                        </button>
-
-                        <OrganizationActions
-                          isOpen={
-                            openOrganizationActionsName === activeOrganization.name
-                          }
-                          onRequestDelete={openDeleteOrganizationDialog}
-                          onToggle={toggleOrganizationActions}
-                          organizationName={activeOrganization.name}
-                        />
-                      </div>
-                    )}
-
-                    {isSidebarOpen && isOrganizationMenuOpen && (
-                      <div className="organization-list">
-                        <input
-                          aria-label="Search organizations"
-                          className="organization-search"
-                          onChange={(event) =>
-                            setOrganizationSearch(event.target.value)
-                          }
-                          placeholder="Search organizations"
-                          type="search"
-                          value={organizationSearch}
-                        />
-
-                        {visibleOrganizations.length === 0 ? (
-                          <p className="muted-copy">
-                            {organizationSearch.trim()
-                              ? "No organizations found."
-                              : "No other organizations."}
-                          </p>
-                        ) : (
-                          visibleOrganizations.map((organization) => (
-                            <div
-                              className="organization-menu-row"
-                              key={organization.name}
-                            >
-                              <button
-                                aria-label={
-                                  organization.isPinned
-                                    ? `${organization.name}, pinned`
-                                    : organization.name
-                                }
-                                className="organization-item organization-menu-item"
-                                data-active={
-                                  organization.name === activeOrganizationName
-                                }
-                                data-pinned={organization.isPinned}
-                                onClick={() => {
-                                  setActiveOrganizationName(organization.name);
-                                  setIsOrganizationMenuOpen(false);
-                                  setOpenOrganizationActionsName("");
-                                  setOrganizationSearch("");
-                                  setProjectName("");
-                                }}
-                                type="button"
-                              >
-                                <span className="project-icon">P</span>
-                                <span className="organization-text">
-                                  <strong>{organization.name}</strong>
-                                </span>
-                                {organization.isPinned && (
-                                  <span
-                                    aria-hidden="true"
-                                    className="pinned-marker"
-                                  >
-                                    <FavoriteIcon />
-                                  </span>
-                                )}
-                              </button>
-
-                              <OrganizationActions
-                                isOpen={
-                                  openOrganizationActionsName ===
-                                  organization.name
-                                }
-                                onRequestDelete={openDeleteOrganizationDialog}
-                                onToggle={toggleOrganizationActions}
-                                organizationName={organization.name}
-                              />
-                            </div>
-                          ))
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            </section>
-
-            {hasOrganization && (
-              <section className="sidebar-section project-section">
-                <div className="section-title">
-                  <span>Projects</span>
-                  <button
-                    aria-label="Create project"
-                    className="icon-button"
-                    onClick={createProjectFromInput}
-                    type="button"
-                  >
-                    +
-                  </button>
-                </div>
-
-                {activeProjects.length === 0 ? (
-                  <p className="muted-copy">No projects yet.</p>
-                ) : (
-                  <div className="thread-list">
-                    {activeProjects.map((project) => (
-                      <button
-                        className="thread-item"
-                        key={project}
-                        type="button"
-                      >
-                        <span className="project-list-icon">
-                          {project.slice(0, 1).toUpperCase()}
-                        </span>
-                        <span>
-                          <strong>{project}</strong>
-                          <small>Completed · just now</small>
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </section>
-            )}
-
-            <div className="sidebar-footer">
-              <UserMenu onThemeChange={changeThemeMode} themeMode={themeMode} />
-            </div>
-          </aside>
-
-        <section className="workspace-panel">
-          <header className="workspace-header">
-            <div className="workspace-title-row">
-              <div className="workspace-title-text">
-                {hasOrganization && <span>Organization</span>}
-                <strong>
-                  {hasOrganization
-                    ? activeOrganizationDisplayName
-                    : "No organization"}
-                </strong>
-              </div>
-            </div>
-          </header>
-
-          <div className="content-area">
-            {!hasOrganization ? (
-              <section className="empty-card">
-                <h1>No organization yet</h1>
-                <p>Use the + button in the sidebar to create an organization.</p>
-              </section>
-            ) : (
-              <>
-                <section className="organization-details-panel">
-                  <div className="organization-details-editor">
-                    <div className="details-heading">
-                      <span>Organization details</span>
-                      <strong>Markdown</strong>
-                    </div>
-
-                    <textarea
-                      aria-label="Organization details"
-                      maxLength={2000}
-                      onChange={(event) =>
-                        updateOrganizationDetails(event.target.value)
-                      }
-                      placeholder={`# About this organization
-
-Write goals, notes, or links here.
-
-- First note
-- Second note`}
-                      value={activeOrganizationDetails}
-                    />
-                  </div>
-
-                  <div className="organization-details-preview">
-                    <div className="details-heading">
-                      <span>Preview</span>
-                      <strong>{activeOrganizationDisplayName}</strong>
-                    </div>
-
-                    <MarkdownPreview markdown={activeOrganizationDetails} />
-                  </div>
-                </section>
-
-                {activeProjects.length === 0 ? (
-                  <section className="empty-card">
-                    <h1>No projects yet</h1>
-                    <p>
-                      Create your first project and it will appear in the
-                      sidebar.
-                    </p>
-                  </section>
-                ) : (
-                  <section className="activity-list">
-                    {activeProjects.map((project) => (
-                      <article className="activity-card" key={project}>
-                        <div className="activity-heading">
-                          <span className="status-dot complete" />
-                          <div>
-                            <strong>{project}</strong>
-                            <small>
-                              Project created in {activeOrganizationDisplayName}
-                            </small>
-                          </div>
-                        </div>
-
-                        <div className="summary-box">
-                          <p>Ready for the next workflow step.</p>
-                          <span>Local project</span>
-                        </div>
-                      </article>
-                    ))}
-                  </section>
-                )}
-              </>
-            )}
-          </div>
-
-          {hasOrganization && (
-            <form
-              className="composer"
-              id="create-project-form"
-              onSubmit={createProject}
-            >
-              <input
-                aria-label="Project name"
-                ref={composerInputRef}
-                onChange={(event) => setProjectName(event.target.value)}
-                placeholder="Create a new project..."
-                type="text"
-                value={projectName}
-              />
-            </form>
-          )}
-        </section>
+        <WorkspacePanel
+          activeOrganizationDetails={activeOrganizationDetails}
+          activeOrganizationName={activeOrganizationName}
+          activeProjects={activeProjects}
+          hasOrganization={hasOrganization}
+          onProjectNameChange={setProjectName}
+          onProjectSubmit={createProject}
+          onUpdateOrganizationDetails={updateOrganizationDetails}
+          projectInputRef={composerInputRef}
+          projectName={projectName}
+        />
       </section>
 
       {isOrganizationDialogOpen && (
-        <div className="dialog-backdrop">
-          <section
-            aria-labelledby="organization-dialog-title"
-            className="dialog-panel"
-            role="dialog"
-          >
-            <h2 id="organization-dialog-title">Create organization</h2>
-            <p id="organization-name-help">{organizationNameHelp}</p>
-
-            <form className="dialog-form" onSubmit={createOrganization}>
-              <input
-                autoFocus
-                aria-label="Organization name"
-                aria-describedby="organization-name-help"
-                aria-invalid={organizationNameError.length > 0}
-                maxLength={30}
-                onChange={(event) => {
-                  setDraftOrganizationName(event.target.value.toLowerCase());
-                  setOrganizationNameError("");
-                }}
-                placeholder="my-organization"
-                spellCheck="false"
-                type="text"
-                value={draftOrganizationName}
-              />
-              {organizationNameError && (
-                <p className="dialog-error">
-                  {organizationNameError}
-                </p>
-              )}
-
-              <div className="dialog-actions">
-                <button
-                  className="ghost-button"
-                  onClick={() => setIsOrganizationDialogOpen(false)}
-                  type="button"
-                >
-                  Cancel
-                </button>
-                <button className="primary-button" type="submit">
-                  Create
-                </button>
-              </div>
-            </form>
-          </section>
-        </div>
+        <CreateOrganizationDialog
+          draftOrganizationName={draftOrganizationName}
+          error={organizationNameError}
+          onCancel={closeOrganizationDialog}
+          onNameChange={updateDraftOrganizationName}
+          onSubmit={createOrganization}
+        />
       )}
 
       {deleteOrganizationName && (
-        <div className="dialog-backdrop">
-          <section
-            aria-labelledby="delete-organization-dialog-title"
-            className="dialog-panel"
-            role="dialog"
-          >
-            <h2 id="delete-organization-dialog-title">Delete organization</h2>
-            <p>
-              This will delete <strong>{deleteOrganizationName}</strong> and its
-              local projects.
-            </p>
-
-            <form className="dialog-form" onSubmit={confirmDeleteOrganization}>
-              <label
-                className="delete-confirmation-label"
-                htmlFor="delete-organization-confirmation"
-              >
-                Type <strong>{deleteOrganizationName}</strong> to confirm.
-              </label>
-              <input
-                autoFocus
-                aria-label="Organization name confirmation"
-                id="delete-organization-confirmation"
-                onChange={(event) =>
-                  setDeleteConfirmationText(event.target.value)
-                }
-                placeholder={deleteOrganizationName}
-                spellCheck="false"
-                type="text"
-                value={deleteConfirmationText}
-              />
-
-              <div className="dialog-actions">
-                <button
-                  className="ghost-button"
-                  onClick={closeDeleteOrganizationDialog}
-                  type="button"
-                >
-                  Cancel
-                </button>
-                <button
-                  className="danger-button"
-                  disabled={!canDeleteOrganization}
-                  type="submit"
-                >
-                  Delete
-                </button>
-              </div>
-            </form>
-          </section>
-        </div>
+        <DeleteOrganizationDialog
+          canDeleteOrganization={canDeleteOrganization}
+          confirmationText={deleteConfirmationText}
+          organizationName={deleteOrganizationName}
+          onCancel={closeDeleteOrganizationDialog}
+          onConfirmationChange={setDeleteConfirmationText}
+          onSubmit={confirmDeleteOrganization}
+        />
       )}
     </main>
   );
