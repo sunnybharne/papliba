@@ -23,10 +23,17 @@ This repository currently contains the project foundation and the first tiny fro
 - contribution and security docs
 - Husky and commitlint setup
 - first Next.js Hello World screen
+- first visual concept preview for the workflow builder UI
 
-The first implementation is intentionally small: a Next.js Hello World screen.
+The first implementation is intentionally small: a Next.js Hello World screen plus a separate concept preview page.
 
 The web frontend uses Next.js + React + TypeScript.
+
+Open the concept preview at:
+
+```text
+http://127.0.0.1:3000/concept
+```
 
 ## Architecture
 
