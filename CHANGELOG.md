@@ -6,6 +6,8 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-08-05
+
 ### Added
 
 - Created the initial open-source project foundation.
