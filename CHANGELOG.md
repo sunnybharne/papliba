@@ -8,6 +8,7 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ### Changed
 
+- Restyled the lower-left account menu to match the compact reference layout.
 - Removed extra subtext from the Settings menu item.
 - Updated the app font stack and softened key sidebar font weights.
 - Removed helper text from the no-organization empty state.

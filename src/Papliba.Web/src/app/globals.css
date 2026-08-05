@@ -271,10 +271,10 @@ a {
 .sidebar-toggle:hover,
 .thread-item:hover,
 .account-button:hover,
+.help-button:hover,
 .organization-empty:hover,
 .account-menu-item:hover,
 .account-menu-user:hover,
-.theme-option:hover,
 .settings-nav-item:hover,
 .settings-close-button:hover,
 .settings-theme-option:hover,
@@ -473,12 +473,14 @@ a {
   display: grid;
   place-items: center;
   border-radius: 9px;
-  color: #111111;
-  background: var(--accent);
+  color: #ffffff;
+  background: #7d8787;
   font-weight: 800;
 }
 
 .project-icon {
+  color: #111111;
+  background: var(--accent);
   width: 26px;
   height: 26px;
 }
@@ -566,6 +568,13 @@ a {
   position: relative;
 }
 
+.account-footer-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 34px;
+  gap: 8px;
+  align-items: center;
+}
+
 .account-button {
   display: grid;
   grid-template-columns: 26px minmax(0, 1fr);
@@ -575,14 +584,27 @@ a {
   min-height: 34px;
   padding: 4px 6px;
   border: 0;
-  border-radius: 10px;
+  border-radius: 14px;
   color: var(--text);
-  background: transparent;
+  background: var(--quiet-surface);
   text-align: left;
 }
 
 .account-button[aria-expanded="true"] {
   background: var(--sidebar-active);
+}
+
+.help-button {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  color: var(--muted);
+  background: transparent;
+  font-size: 1rem;
+  font-weight: 600;
 }
 
 .avatar {
@@ -593,17 +615,18 @@ a {
 
 .account-menu {
   position: absolute;
-  right: 0;
-  bottom: calc(100% + 6px);
+  right: -4px;
+  bottom: calc(100% + 8px);
+  left: -4px;
   display: grid;
-  gap: 6px;
-  width: 230px;
-  padding: 8px;
+  gap: 4px;
+  padding: 10px;
   border: 1px solid var(--border-soft);
-  border-radius: 10px;
-  background: var(--panel);
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--panel) 92%, transparent);
   box-shadow: var(--shadow);
   transform-origin: bottom;
+  backdrop-filter: blur(18px);
   animation: dropdown-enter 120ms ease-out;
   z-index: 10;
 }
@@ -620,10 +643,16 @@ a {
 
 .account-menu-user {
   border: 0;
-  border-radius: 8px;
+  border-radius: 12px;
   color: var(--text);
   background: transparent;
   text-align: left;
+}
+
+.account-menu-divider {
+  height: 1px;
+  margin: 4px 4px 6px;
+  background: var(--border-soft);
 }
 
 .sidebar[data-open="false"] .brand-row {
@@ -640,7 +669,8 @@ a {
 .sidebar[data-open="false"] .organization-list,
 .sidebar[data-open="false"] .thread-item > span:last-child,
 .sidebar[data-open="false"] .muted-copy,
-.sidebar[data-open="false"] .account-button > span:not(.avatar) {
+.sidebar[data-open="false"] .account-button > span:not(.avatar),
+.sidebar[data-open="false"] .help-button {
   display: none;
 }
 
@@ -675,6 +705,11 @@ a {
   right: auto;
   bottom: 0;
   left: calc(100% + 8px);
+  width: 240px;
+}
+
+.sidebar[data-open="false"] .account-footer-row {
+  grid-template-columns: 1fr;
 }
 
 .account-menu-user strong,
@@ -692,48 +727,32 @@ a {
 
 .account-menu-item {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto 14px;
+  grid-template-columns: 22px minmax(0, 1fr) auto 14px;
   gap: 8px;
   align-items: center;
-  min-height: 38px;
-  padding: 0 10px;
+  min-height: 34px;
+  padding: 0 8px;
   border: 0;
-  border-radius: 8px;
+  border-radius: 10px;
   color: var(--text);
   background: transparent;
   text-align: left;
 }
 
-.account-menu-item small {
+.account-menu-icon {
+  width: 20px;
+  height: 20px;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
   color: var(--muted);
 }
 
+.menu-shortcut,
 .menu-chevron {
   color: var(--muted);
   text-align: right;
-}
-
-.theme-choice-list {
-  display: grid;
-  gap: 4px;
-  padding: 4px;
-  border-radius: 9px;
-  background: var(--quiet-surface);
-}
-
-.theme-option {
-  min-height: 36px;
-  padding: 0 10px;
-  border: 0;
-  border-radius: 8px;
-  color: var(--text);
-  background: transparent;
-  text-align: left;
-}
-
-.theme-option[data-active="true"] {
-  color: var(--accent);
-  background: var(--quiet-surface);
 }
 
 .workspace-panel {

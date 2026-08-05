@@ -14,7 +14,6 @@ type SettingsSection = "account" | "appearance";
 
 export function UserMenu({ onThemeChange, themeMode }: UserMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [isThemeMenuOpen, setIsThemeMenuOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [settingsSection, setSettingsSection] =
     useState<SettingsSection>("account");
@@ -22,34 +21,32 @@ export function UserMenu({ onThemeChange, themeMode }: UserMenuProps) {
   const activeThemeLabel =
     themeOptions.find((option) => option.value === themeMode)?.label ?? "System";
 
-  function changeTheme(nextThemeMode: ThemeMode) {
-    onThemeChange(nextThemeMode);
-    setIsThemeMenuOpen(false);
-    setIsOpen(false);
-  }
-
   function openSettings(nextSettingsSection: SettingsSection) {
     setSettingsSection(nextSettingsSection);
     setIsOpen(false);
-    setIsThemeMenuOpen(false);
     setIsSettingsOpen(true);
   }
 
   return (
     <div className="user-menu">
-      <button
-        aria-expanded={isOpen}
-        aria-haspopup="menu"
-        aria-label="Open account menu"
-        className="account-button"
-        onClick={() => setIsOpen((currentIsOpen) => !currentIsOpen)}
-        type="button"
-      >
-        <span className="avatar">{userInitials}</span>
-        <span>
-          <strong>{userName}</strong>
-        </span>
-      </button>
+      <div className="account-footer-row">
+        <button
+          aria-expanded={isOpen}
+          aria-haspopup="menu"
+          aria-label="Open account menu"
+          className="account-button"
+          onClick={() => setIsOpen((currentIsOpen) => !currentIsOpen)}
+          type="button"
+        >
+          <span className="avatar">{userInitials}</span>
+          <span>
+            <strong>{userName}</strong>
+          </span>
+        </button>
+        <button aria-label="Help" className="help-button" type="button">
+          ?
+        </button>
+      </div>
 
       {isOpen && (
         <div className="account-menu" role="menu">
@@ -62,46 +59,14 @@ export function UserMenu({ onThemeChange, themeMode }: UserMenuProps) {
             <span className="avatar">{userInitials}</span>
             <span>
               <strong>{userName}</strong>
-              <small>Local profile</small>
             </span>
           </button>
 
-          <button
-            aria-expanded={isThemeMenuOpen}
-            aria-haspopup="menu"
-            className="account-menu-item"
-            onClick={() =>
-              setIsThemeMenuOpen(
-                (currentIsThemeMenuOpen) => !currentIsThemeMenuOpen,
-              )
-            }
-            role="menuitem"
-            type="button"
-          >
-            <span>Theme</span>
-            <small>{activeThemeLabel}</small>
-            <span aria-hidden="true" className="menu-chevron">
-              ›
-            </span>
-          </button>
+          <div className="account-menu-divider" />
 
-          {isThemeMenuOpen && (
-            <div className="theme-choice-list">
-              {themeOptions.map((option) => (
-                <button
-                  aria-checked={themeMode === option.value}
-                  className="theme-option"
-                  data-active={themeMode === option.value}
-                  key={option.value}
-                  onClick={() => changeTheme(option.value)}
-                  role="menuitemradio"
-                  type="button"
-                >
-                  {option.label}
-                </button>
-              ))}
-            </div>
-          )}
+          <AccountMenuItem icon="usage" label="Usage remaining" />
+          <AccountMenuItem icon="pet" label="Show pet" />
+          <AccountMenuItem icon="invite" label="Invite a friend" />
 
           <button
             className="account-menu-item"
@@ -109,11 +74,17 @@ export function UserMenu({ onThemeChange, themeMode }: UserMenuProps) {
             role="menuitem"
             type="button"
           >
+            <MenuIcon name="settings" />
             <span>Settings</span>
+            <span aria-hidden="true" className="menu-shortcut">
+              ⌘,
+            </span>
             <span aria-hidden="true" className="menu-chevron">
               ›
             </span>
           </button>
+
+          <AccountMenuItem icon="logout" label="Log out" />
         </div>
       )}
 
@@ -207,5 +178,71 @@ export function UserMenu({ onThemeChange, themeMode }: UserMenuProps) {
         </div>
       )}
     </div>
+  );
+}
+
+type AccountMenuItemProps = {
+  icon: MenuIconName;
+  label: string;
+};
+
+function AccountMenuItem({ icon, label }: AccountMenuItemProps) {
+  return (
+    <button className="account-menu-item" role="menuitem" type="button">
+      <MenuIcon name={icon} />
+      <span>{label}</span>
+      {icon === "usage" && (
+        <span aria-hidden="true" className="menu-chevron">
+          ›
+        </span>
+      )}
+    </button>
+  );
+}
+
+type MenuIconName = "invite" | "logout" | "pet" | "settings" | "usage";
+
+function MenuIcon({ name }: { name: MenuIconName }) {
+  return (
+    <svg
+      aria-hidden="true"
+      className="account-menu-icon"
+      fill="none"
+      viewBox="0 0 24 24"
+    >
+      {name === "usage" && (
+        <>
+          <path d="M4 13a8 8 0 0 1 16 0" />
+          <path d="M12 13l4-4" />
+        </>
+      )}
+      {name === "pet" && (
+        <>
+          <circle cx="7" cy="10" r="2" />
+          <circle cx="12" cy="7" r="2" />
+          <circle cx="17" cy="10" r="2" />
+          <path d="M8 17c1.4-3 6.6-3 8 0 1 2.2-1 4-4 4s-5-1.8-4-4Z" />
+        </>
+      )}
+      {name === "invite" && (
+        <>
+          <path d="M21 3 3 11l7 3 3 7 8-18Z" />
+          <path d="m10 14 4-4" />
+        </>
+      )}
+      {name === "settings" && (
+        <>
+          <circle cx="12" cy="12" r="3" />
+          <path d="M12 3v3M12 18v3M4.2 7.5l2.6 1.5M17.2 15l2.6 1.5M19.8 7.5 17.2 9M6.8 15l-2.6 1.5" />
+        </>
+      )}
+      {name === "logout" && (
+        <>
+          <path d="M10 6H5v12h5" />
+          <path d="M14 8l4 4-4 4" />
+          <path d="M8 12h10" />
+        </>
+      )}
+    </svg>
   );
 }
