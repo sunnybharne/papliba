@@ -280,7 +280,8 @@ kbd {
 .sidebar-toggle:hover,
 .thread-item:hover,
 .account-button:hover,
-.theme-option:hover {
+.theme-option:hover,
+.pin-button:hover {
   background: var(--sidebar-active);
 }
 
@@ -300,6 +301,13 @@ kbd {
 .organization-select {
   display: grid;
   gap: 6px;
+}
+
+.organization-active-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 28px;
+  gap: 4px;
+  align-items: center;
 }
 
 .organization-list {
@@ -338,6 +346,10 @@ kbd {
   grid-template-columns: 30px minmax(0, 1fr) 20px;
 }
 
+.organization-menu-item[data-pinned="true"] {
+  grid-template-columns: 30px minmax(0, 1fr) 18px;
+}
+
 .organization-arrow {
   display: grid;
   width: 16px;
@@ -363,6 +375,63 @@ kbd {
 .organization-item:hover,
 .organization-item[data-active="true"] {
   background: var(--sidebar-active);
+}
+
+.pin-button {
+  display: grid;
+  width: 28px;
+  height: 40px;
+  place-items: center;
+  border: 0;
+  border-radius: 9px;
+  color: var(--muted);
+  background: transparent;
+}
+
+.pin-button[data-pinned="true"] {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.pin-icon {
+  position: relative;
+  display: block;
+  width: 14px;
+  height: 14px;
+  transform: rotate(45deg);
+}
+
+.pin-icon::before {
+  position: absolute;
+  top: 1px;
+  left: 4px;
+  width: 6px;
+  height: 8px;
+  border: 1.5px solid currentColor;
+  border-bottom: 0;
+  border-radius: 2px 2px 0 0;
+  content: "";
+}
+
+.pin-icon::after {
+  position: absolute;
+  top: 8px;
+  left: 6px;
+  width: 1.5px;
+  height: 6px;
+  background: currentColor;
+  content: "";
+}
+
+.pinned-marker {
+  display: grid;
+  place-items: center;
+  color: var(--accent);
+}
+
+.pinned-marker .pin-icon {
+  width: 12px;
+  height: 12px;
 }
 
 .project-icon,

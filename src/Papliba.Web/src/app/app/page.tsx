@@ -21,6 +21,7 @@ type ThemeMode = (typeof themeOptions)[number]["value"];
 
 type Organization = {
   details: string;
+  isPinned: boolean;
   name: string;
   projects: string[];
 };
@@ -177,13 +178,17 @@ export default function Home() {
   const selectableOrganizations = organizations.filter(
     (organization) => organization.name !== activeOrganizationName,
   );
-  const visibleOrganizations = organizationSearch.trim()
+  const matchingOrganizations = organizationSearch.trim()
     ? selectableOrganizations.filter((organization) =>
         organization.name
           .toLowerCase()
           .includes(organizationSearch.trim().toLowerCase()),
       )
     : selectableOrganizations;
+  const visibleOrganizations = [
+    ...matchingOrganizations.filter((organization) => organization.isPinned),
+    ...matchingOrganizations.filter((organization) => !organization.isPinned),
+  ];
 
   function changeThemeMode(nextThemeMode: ThemeMode) {
     setThemeMode(nextThemeMode);
@@ -224,7 +229,7 @@ export default function Home() {
 
     setOrganizations((currentOrganizations) => [
       ...currentOrganizations,
-      { details: "", name: nextOrganizationName, projects: [] },
+      { details: "", isPinned: false, name: nextOrganizationName, projects: [] },
     ]);
     setActiveOrganizationName(nextOrganizationName);
     setDraftOrganizationName("");
@@ -284,6 +289,18 @@ export default function Home() {
         }
 
         return { ...organization, details: nextDetails };
+      }),
+    );
+  }
+
+  function toggleOrganizationPin(organizationName: string) {
+    setOrganizations((currentOrganizations) =>
+      currentOrganizations.map((organization) => {
+        if (organization.name !== organizationName) {
+          return organization;
+        }
+
+        return { ...organization, isPinned: !organization.isPinned };
       }),
     );
   }
@@ -348,21 +365,40 @@ export default function Home() {
                 ) : (
                   <div className="organization-select">
                     {activeOrganization && (
-                      <button
-                        aria-expanded={isOrganizationMenuOpen}
-                        className="organization-item organization-active"
-                        onClick={toggleOrganizationMenu}
-                        type="button"
-                      >
-                        <span className="project-icon">P</span>
-                        <span className="organization-text">
-                          <strong>{activeOrganization.name}</strong>
-                        </span>
-                        <span
-                          aria-hidden="true"
-                          className="organization-arrow"
-                        />
-                      </button>
+                      <div className="organization-active-row">
+                        <button
+                          aria-expanded={isOrganizationMenuOpen}
+                          className="organization-item organization-active"
+                          onClick={toggleOrganizationMenu}
+                          type="button"
+                        >
+                          <span className="project-icon">P</span>
+                          <span className="organization-text">
+                            <strong>{activeOrganization.name}</strong>
+                          </span>
+                          <span
+                            aria-hidden="true"
+                            className="organization-arrow"
+                          />
+                        </button>
+
+                        <button
+                          aria-label={
+                            activeOrganization.isPinned
+                              ? "Unpin organization"
+                              : "Pin organization"
+                          }
+                          aria-pressed={activeOrganization.isPinned}
+                          className="pin-button"
+                          data-pinned={activeOrganization.isPinned}
+                          onClick={() =>
+                            toggleOrganizationPin(activeOrganization.name)
+                          }
+                          type="button"
+                        >
+                          <span aria-hidden="true" className="pin-icon" />
+                        </button>
+                      </div>
                     )}
 
                     {isOrganizationMenuOpen && (
@@ -387,10 +423,16 @@ export default function Home() {
                         ) : (
                           visibleOrganizations.map((organization) => (
                             <button
-                              className="organization-item"
+                              aria-label={
+                                organization.isPinned
+                                  ? `${organization.name}, pinned`
+                                  : organization.name
+                              }
+                              className="organization-item organization-menu-item"
                               data-active={
                                 organization.name === activeOrganizationName
                               }
+                              data-pinned={organization.isPinned}
                               key={organization.name}
                               onClick={() => {
                                 setActiveOrganizationName(organization.name);
@@ -405,6 +447,14 @@ export default function Home() {
                               <span className="organization-text">
                                 <strong>{organization.name}</strong>
                               </span>
+                              {organization.isPinned && (
+                                <span
+                                  aria-hidden="true"
+                                  className="pinned-marker"
+                                >
+                                  <span className="pin-icon" />
+                                </span>
+                              )}
                             </button>
                           ))
                         )}

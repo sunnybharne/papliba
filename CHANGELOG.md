@@ -14,6 +14,7 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 - Added smoother sidebar collapse and dropdown menu motion.
 - Replaced the collapsed sidebar hamburger with a cleaner sidebar icon.
 - Added editable markdown details for organizations.
+- Added organization pinning.
 
 ### Changed
 
