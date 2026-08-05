@@ -834,13 +834,11 @@ export default function Home() {
           <header className="workspace-header">
             <div className="workspace-title-row">
               <div className="workspace-title-text">
-                <span>
-                  {hasOrganization ? "Organization" : "No active organization"}
-                </span>
+                {hasOrganization && <span>Organization</span>}
                 <strong>
                   {hasOrganization
                     ? activeOrganizationDisplayName
-                    : "Create an organization"}
+                    : "No organization"}
                 </strong>
               </div>
             </div>

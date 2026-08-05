@@ -12,6 +12,7 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 - Replaced the sidebar collapse icon with a cleaner sidebar layout marker.
 - Added open/closed animation to the sidebar layout icon.
 - Hid collapsed sidebar create buttons and made the organization rail icon expand the sidebar.
+- Simplified the no-organization workspace header text.
 
 ## [0.2.0] - 2026-08-05
 
