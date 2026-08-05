@@ -26,6 +26,13 @@ type Organization = {
   projects: string[];
 };
 
+type OrganizationActionsProps = {
+  isOpen: boolean;
+  onDelete: (organizationName: string) => void;
+  onToggle: (organizationName: string) => void;
+  organizationName: string;
+};
+
 function isThemeMode(value: string | null): value is ThemeMode {
   return value === "system" || value === "light" || value === "dark";
 }
@@ -81,6 +88,41 @@ function MarkdownPreview({ markdown }: { markdown: string }) {
 
         return <p key={index}>{line}</p>;
       })}
+    </div>
+  );
+}
+
+function OrganizationActions({
+  isOpen,
+  onDelete,
+  onToggle,
+  organizationName,
+}: OrganizationActionsProps) {
+  return (
+    <div className="organization-actions">
+      <button
+        aria-expanded={isOpen}
+        aria-haspopup="menu"
+        aria-label={`Open ${organizationName} actions`}
+        className="organization-more-button"
+        onClick={() => onToggle(organizationName)}
+        type="button"
+      >
+        <span aria-hidden="true">...</span>
+      </button>
+
+      {isOpen && (
+        <div className="organization-action-menu" role="menu">
+          <button
+            className="danger-menu-item"
+            onClick={() => onDelete(organizationName)}
+            role="menuitem"
+            type="button"
+          >
+            Delete
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -158,6 +200,8 @@ export default function Home() {
   const [isOrganizationMenuOpen, setIsOrganizationMenuOpen] = useState(false);
   const [isOrganizationDialogOpen, setIsOrganizationDialogOpen] =
     useState(false);
+  const [openOrganizationActionsName, setOpenOrganizationActionsName] =
+    useState("");
   const [organizationNameError, setOrganizationNameError] = useState("");
 
   const activeOrganization = organizations.find(
@@ -198,6 +242,7 @@ export default function Home() {
   function openOrganizationDialog() {
     setDraftOrganizationName("");
     setOrganizationSearch("");
+    setOpenOrganizationActionsName("");
     setOrganizationNameError("");
     setIsOrganizationMenuOpen(false);
     setIsOrganizationDialogOpen(true);
@@ -205,8 +250,15 @@ export default function Home() {
 
   function toggleOrganizationMenu() {
     setOrganizationSearch("");
+    setOpenOrganizationActionsName("");
     setIsOrganizationMenuOpen((currentIsOrganizationMenuOpen) => {
       return !currentIsOrganizationMenuOpen;
+    });
+  }
+
+  function toggleOrganizationActions(organizationName: string) {
+    setOpenOrganizationActionsName((currentOrganizationName) => {
+      return currentOrganizationName === organizationName ? "" : organizationName;
     });
   }
 
@@ -236,6 +288,7 @@ export default function Home() {
     setOrganizationNameError("");
     setIsOrganizationDialogOpen(false);
     setIsOrganizationMenuOpen(false);
+    setOpenOrganizationActionsName("");
     setOrganizationSearch("");
     setProjectSearch("");
   }
@@ -303,6 +356,23 @@ export default function Home() {
         return { ...organization, isPinned: !organization.isPinned };
       }),
     );
+  }
+
+  function deleteOrganization(organizationName: string) {
+    const remainingOrganizations = organizations.filter((organization) => {
+      return organization.name !== organizationName;
+    });
+
+    setOrganizations(remainingOrganizations);
+    setOpenOrganizationActionsName("");
+    setIsOrganizationMenuOpen(false);
+    setOrganizationSearch("");
+    setProjectName("");
+    setProjectSearch("");
+
+    if (organizationName === activeOrganizationName) {
+      setActiveOrganizationName(remainingOrganizations[0]?.name ?? "");
+    }
   }
 
   return (
@@ -398,6 +468,15 @@ export default function Home() {
                         >
                           <span aria-hidden="true" className="pin-icon" />
                         </button>
+
+                        <OrganizationActions
+                          isOpen={
+                            openOrganizationActionsName === activeOrganization.name
+                          }
+                          onDelete={deleteOrganization}
+                          onToggle={toggleOrganizationActions}
+                          organizationName={activeOrganization.name}
+                        />
                       </div>
                     )}
 
@@ -422,40 +501,55 @@ export default function Home() {
                           </p>
                         ) : (
                           visibleOrganizations.map((organization) => (
-                            <button
-                              aria-label={
-                                organization.isPinned
-                                  ? `${organization.name}, pinned`
-                                  : organization.name
-                              }
-                              className="organization-item organization-menu-item"
-                              data-active={
-                                organization.name === activeOrganizationName
-                              }
-                              data-pinned={organization.isPinned}
+                            <div
+                              className="organization-menu-row"
                               key={organization.name}
-                              onClick={() => {
-                                setActiveOrganizationName(organization.name);
-                                setIsOrganizationMenuOpen(false);
-                                setOrganizationSearch("");
-                                setProjectName("");
-                                setProjectSearch("");
-                              }}
-                              type="button"
                             >
-                              <span className="project-icon">P</span>
-                              <span className="organization-text">
-                                <strong>{organization.name}</strong>
-                              </span>
-                              {organization.isPinned && (
-                                <span
-                                  aria-hidden="true"
-                                  className="pinned-marker"
-                                >
-                                  <span className="pin-icon" />
+                              <button
+                                aria-label={
+                                  organization.isPinned
+                                    ? `${organization.name}, pinned`
+                                    : organization.name
+                                }
+                                className="organization-item organization-menu-item"
+                                data-active={
+                                  organization.name === activeOrganizationName
+                                }
+                                data-pinned={organization.isPinned}
+                                onClick={() => {
+                                  setActiveOrganizationName(organization.name);
+                                  setIsOrganizationMenuOpen(false);
+                                  setOpenOrganizationActionsName("");
+                                  setOrganizationSearch("");
+                                  setProjectName("");
+                                  setProjectSearch("");
+                                }}
+                                type="button"
+                              >
+                                <span className="project-icon">P</span>
+                                <span className="organization-text">
+                                  <strong>{organization.name}</strong>
                                 </span>
-                              )}
-                            </button>
+                                {organization.isPinned && (
+                                  <span
+                                    aria-hidden="true"
+                                    className="pinned-marker"
+                                  >
+                                    <span className="pin-icon" />
+                                  </span>
+                                )}
+                              </button>
+
+                              <OrganizationActions
+                                isOpen={
+                                  openOrganizationActionsName ===
+                                  organization.name
+                                }
+                                onDelete={deleteOrganization}
+                                onToggle={toggleOrganizationActions}
+                                organizationName={organization.name}
+                              />
+                            </div>
                           ))
                         )}
                       </div>

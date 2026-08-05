@@ -281,7 +281,8 @@ kbd {
 .thread-item:hover,
 .account-button:hover,
 .theme-option:hover,
-.pin-button:hover {
+.pin-button:hover,
+.organization-more-button:hover {
   background: var(--sidebar-active);
 }
 
@@ -304,6 +305,14 @@ kbd {
 }
 
 .organization-active-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 28px 28px;
+  gap: 4px;
+  align-items: center;
+}
+
+.organization-menu-row {
+  position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr) 28px;
   gap: 4px;
@@ -386,6 +395,57 @@ kbd {
   border-radius: 9px;
   color: var(--muted);
   background: transparent;
+}
+
+.organization-more-button {
+  display: grid;
+  width: 28px;
+  height: 40px;
+  place-items: center;
+  border: 0;
+  border-radius: 9px;
+  color: var(--muted);
+  background: transparent;
+  font-weight: 800;
+  opacity: 0;
+}
+
+.organization-active-row:hover .organization-more-button,
+.organization-menu-row:hover .organization-more-button,
+.organization-actions:focus-within .organization-more-button {
+  opacity: 1;
+}
+
+.organization-actions {
+  position: relative;
+}
+
+.organization-action-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  display: grid;
+  min-width: 120px;
+  padding: 4px;
+  border: 1px solid var(--border-soft);
+  border-radius: 10px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+  z-index: 12;
+}
+
+.danger-menu-item {
+  min-height: 32px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 8px;
+  color: #ef4444;
+  background: transparent;
+  text-align: left;
+}
+
+.danger-menu-item:hover {
+  background: color-mix(in srgb, #ef4444 12%, transparent);
 }
 
 .pin-button[data-pinned="true"] {
