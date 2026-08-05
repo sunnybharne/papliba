@@ -96,7 +96,7 @@ export function Sidebar({
                     onClick={onToggleOrganizationMenu}
                     type="button"
                   >
-                    <span className="project-icon">P</span>
+                    <SidebarItemIcon name="organization" />
                     <span className="organization-text">
                       <strong>{activeOrganization.name}</strong>
                     </span>
@@ -180,12 +180,9 @@ export function Sidebar({
             <div className="thread-list">
               {activeProjects.map((project) => (
                 <button className="thread-item" key={project} type="button">
-                  <span className="project-list-icon">
-                    {project.slice(0, 1).toUpperCase()}
-                  </span>
+                  <SidebarItemIcon name="project" />
                   <span>
                     <strong>{project}</strong>
-                    <small>Completed · just now</small>
                   </span>
                 </button>
               ))}
@@ -218,14 +215,14 @@ function EmptyOrganizationRow({
         onClick={onOpenSidebar}
         type="button"
       >
-        <span className="project-icon">P</span>
+        <SidebarItemIcon name="organization" />
       </button>
     );
   }
 
   return (
     <div className="organization-empty">
-      <span className="project-icon">P</span>
+      <SidebarItemIcon name="organization" />
       <div>
         <strong>No organization</strong>
       </div>
@@ -261,7 +258,7 @@ function OrganizationMenuRow({
         onClick={() => onSelect(organization.name)}
         type="button"
       >
-        <span className="project-icon">P</span>
+        <SidebarItemIcon name="organization" />
         <span className="organization-text">
           <strong>{organization.name}</strong>
         </span>
@@ -377,6 +374,32 @@ function SidebarToggleIcon({ isOpen }: { isOpen: boolean }) {
         y="7"
       />
       <path className="sidebar-layout-icon-divider" d="M9 5v14" />
+    </svg>
+  );
+}
+
+type SidebarItemIconName = "organization" | "project";
+
+function SidebarItemIcon({ name }: { name: SidebarItemIconName }) {
+  return (
+    <svg
+      aria-hidden="true"
+      className="sidebar-item-icon"
+      fill="none"
+      viewBox="0 0 24 24"
+    >
+      {name === "organization" && (
+        <>
+          <rect height="14" rx="2.5" width="14" x="5" y="5" />
+          <path d="M9 9h6M9 13h6M9 17h3" />
+        </>
+      )}
+      {name === "project" && (
+        <>
+          <path d="M5 6h6l2 2h6v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2Z" />
+          <path d="M8 13h8" />
+        </>
+      )}
     </svg>
   );
 }

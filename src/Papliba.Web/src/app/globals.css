@@ -291,8 +291,8 @@ a {
 .organization-empty,
 .organization-item {
   display: grid;
-  grid-template-columns: 26px minmax(0, 1fr);
-  gap: 8px;
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: 10px;
   align-items: center;
 }
 
@@ -303,7 +303,7 @@ a {
 
 .organization-active-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 28px 28px;
+  grid-template-columns: minmax(0, 1fr) 30px 30px;
   gap: 4px;
   align-items: center;
 }
@@ -311,7 +311,7 @@ a {
 .organization-menu-row {
   position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 28px;
+  grid-template-columns: minmax(0, 1fr) 30px;
   gap: 4px;
   align-items: center;
 }
@@ -338,21 +338,22 @@ a {
 
 .organization-empty,
 .organization-item {
-  min-height: 34px;
-  padding: 4px 6px;
+  min-height: 40px;
+  padding: 0 10px;
   border: 0;
-  border-radius: 9px;
+  border-radius: 14px;
   color: var(--text);
   background: transparent;
   text-align: left;
 }
 
 .organization-active {
-  grid-template-columns: 26px minmax(0, 1fr) 18px;
+  grid-template-columns: 28px minmax(0, 1fr) 18px;
+  background: var(--quiet-surface);
 }
 
 .organization-menu-item[data-pinned="true"] {
-  grid-template-columns: 26px minmax(0, 1fr) 16px;
+  grid-template-columns: 28px minmax(0, 1fr) 16px;
 }
 
 .organization-arrow {
@@ -384,22 +385,22 @@ a {
 
 .pin-button {
   display: grid;
-  width: 28px;
-  height: 34px;
+  width: 30px;
+  height: 40px;
   place-items: center;
   border: 0;
-  border-radius: 9px;
+  border-radius: 12px;
   color: var(--muted);
   background: transparent;
 }
 
 .organization-more-button {
   display: grid;
-  width: 28px;
-  height: 34px;
+  width: 30px;
+  height: 40px;
   place-items: center;
   border: 0;
-  border-radius: 9px;
+  border-radius: 12px;
   color: var(--muted);
   background: transparent;
   font-weight: 800;
@@ -468,7 +469,6 @@ a {
   fill: currentColor;
 }
 
-.project-icon,
 .avatar {
   display: grid;
   place-items: center;
@@ -478,11 +478,16 @@ a {
   font-weight: 800;
 }
 
-.project-icon {
-  color: #111111;
-  background: var(--accent);
-  width: 26px;
-  height: 26px;
+.sidebar-item-icon {
+  width: 22px;
+  height: 22px;
+  justify-self: center;
+  color: var(--text);
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.86;
 }
 
 .organization-pill strong,
@@ -526,26 +531,14 @@ a {
 .thread-item {
   display: grid;
   grid-template-columns: 28px minmax(0, 1fr);
-  gap: 8px;
+  gap: 10px;
   align-items: center;
   min-height: 40px;
-  padding: 6px;
+  padding: 0 10px;
   border: 0;
-  border-radius: 10px;
+  border-radius: 14px;
   background: transparent;
   text-align: left;
-}
-
-.project-list-icon {
-  display: grid;
-  width: 28px;
-  height: 28px;
-  place-items: center;
-  border-radius: 8px;
-  color: var(--muted);
-  background: var(--quiet-surface);
-  font-size: 0.78rem;
-  font-weight: 800;
 }
 
 .status-dot {
