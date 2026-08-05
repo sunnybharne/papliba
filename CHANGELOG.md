@@ -18,6 +18,7 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 - Added an organization actions menu with delete support.
 - Added a customer-facing marketing homepage.
 - Added a dedicated docs home page.
+- Added an account menu with nested theme choices and a settings window.
 
 ### Changed
 
