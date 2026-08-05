@@ -12,4 +12,4 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 - Added the first Papliba architecture diagram.
 - Added changelog and release notes structure.
 - Added Husky and commitlint for local commit checks.
-
+- Added the first React Hello World screen.

@@ -4,8 +4,10 @@
   "description": "Papliba local-first workflow builder.",
   "private": true,
   "scripts": {
-    "validate": "npm run validate:diagram",
+    "validate": "npm run validate:diagram && npm run build:web",
     "validate:diagram": "xmllint --noout docs/diagrams/papliba-architecture.drawio",
+    "build:web": "npm --prefix src/Papliba.Web run build",
+    "start:web": "npm --prefix src/Papliba.Web run dev -- --host 127.0.0.1 --port 5173",
     "commitlint": "commitlint",
     "prepare": "husky"
   },

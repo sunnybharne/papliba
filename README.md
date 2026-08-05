@@ -22,8 +22,11 @@ This repository currently contains only the project foundation:
 - open-source license
 - contribution and security docs
 - Husky and commitlint setup
+- first React Hello World screen
 
-There is no application code yet. The first implementation will be added step by step.
+The first implementation is intentionally small: a React Hello World screen.
+
+The web frontend uses React + TypeScript + Vite. It does not use Next.js.
 
 ## Architecture
 
@@ -49,12 +52,19 @@ Install project tooling:
 
 ```bash
 npm install
+npm install --prefix src/Papliba.Web
 ```
 
 Run validation:
 
 ```bash
 npm run validate
+```
+
+Run the React app:
+
+```bash
+npm run start:web
 ```
 
 ## Commit Style
