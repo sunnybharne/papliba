@@ -105,6 +105,20 @@ function FavoriteIcon() {
   );
 }
 
+function SidebarToggleIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      className="sidebar-layout-icon"
+      fill="none"
+      viewBox="0 0 24 24"
+    >
+      <rect height="14" rx="3" width="18" x="3" y="5" />
+      <path d="M9 5v14" />
+    </svg>
+  );
+}
+
 function OrganizationActions({
   isOpen,
   onRequestDelete,
@@ -587,11 +601,7 @@ export default function Home() {
                 onClick={toggleSidebar}
                 type="button"
               >
-                {isSidebarOpen ? (
-                  "‹"
-                ) : (
-                  <span aria-hidden="true" className="sidebar-open-icon" />
-                )}
+                <SidebarToggleIcon />
               </button>
             </div>
 

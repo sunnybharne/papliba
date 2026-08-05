@@ -228,25 +228,20 @@ a {
   border-radius: 9px;
   color: var(--text);
   background: transparent;
-  font-size: 1rem;
 }
 
-.sidebar-open-icon {
-  position: relative;
-  width: 16px;
-  height: 14px;
-  border: 1.5px solid currentColor;
-  border-radius: 4px;
+.sidebar-layout-icon {
+  width: 20px;
+  height: 20px;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.78;
 }
 
-.sidebar-open-icon::before {
-  position: absolute;
-  top: 2px;
-  bottom: 2px;
-  left: 5px;
-  border-left: 1.5px solid currentColor;
-  content: "";
-  opacity: 0.72;
+.sidebar-toggle:hover .sidebar-layout-icon {
+  opacity: 1;
 }
 
 .icon-button:hover,
