@@ -36,7 +36,6 @@ export function WorkspacePanel({
         {!hasOrganization ? (
           <section className="empty-card">
             <h1>No organization yet</h1>
-            <p>Use the + button in the sidebar to create an organization.</p>
           </section>
         ) : (
           <>

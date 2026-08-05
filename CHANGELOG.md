@@ -8,6 +8,7 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ### Changed
 
+- Removed helper text from the no-organization empty state.
 - Reduced the height of the organization and user rows in the sidebar.
 - Replaced the default Next.js browser tab icon with a Papliba icon.
 - Refactored the app screen into smaller, easier-to-read UI components.
