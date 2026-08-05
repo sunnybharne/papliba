@@ -397,7 +397,7 @@ export default function Home() {
                   onClick={() => setIsSidebarOpen(true)}
                   type="button"
                 >
-                  ☰
+                  <span aria-hidden="true" className="sidebar-open-icon" />
                 </button>
               )}
               <div className="workspace-title-text">

@@ -251,6 +251,24 @@ kbd {
   font-size: 1rem;
 }
 
+.sidebar-open-icon {
+  position: relative;
+  width: 16px;
+  height: 14px;
+  border: 1.5px solid currentColor;
+  border-radius: 4px;
+}
+
+.sidebar-open-icon::before {
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  left: 5px;
+  border-left: 1.5px solid currentColor;
+  content: "";
+  opacity: 0.72;
+}
+
 .icon-button:hover,
 .sidebar-toggle:hover,
 .thread-item:hover,
