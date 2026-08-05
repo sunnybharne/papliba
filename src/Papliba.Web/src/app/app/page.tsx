@@ -20,6 +20,7 @@ const organizationNamePattern = /^[a-z0-9][a-z0-9-]{1,28}[a-z0-9]$/;
 type ThemeMode = (typeof themeOptions)[number]["value"];
 
 type Organization = {
+  details: string;
   name: string;
   projects: string[];
 };
@@ -37,6 +38,50 @@ function applyThemeMode(themeMode: ThemeMode) {
 
   document.documentElement.dataset.theme = themeMode;
   window.localStorage.setItem(themeStorageKey, themeMode);
+}
+
+function MarkdownPreview({ markdown }: { markdown: string }) {
+  const lines = markdown
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  if (lines.length === 0) {
+    return (
+      <div className="organization-markdown-preview">
+        <p className="muted-copy">No organization details yet.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="organization-markdown-preview">
+      {lines.map((line, index) => {
+        if (line.startsWith("### ")) {
+          return <h4 key={index}>{line.slice(4)}</h4>;
+        }
+
+        if (line.startsWith("## ")) {
+          return <h3 key={index}>{line.slice(3)}</h3>;
+        }
+
+        if (line.startsWith("# ")) {
+          return <h2 key={index}>{line.slice(2)}</h2>;
+        }
+
+        if (line.startsWith("- ")) {
+          return (
+            <p className="markdown-list-item" key={index}>
+              <span aria-hidden="true" className="markdown-bullet" />
+              {line.slice(2)}
+            </p>
+          );
+        }
+
+        return <p key={index}>{line}</p>;
+      })}
+    </div>
+  );
 }
 
 type UserMenuProps = {
@@ -119,6 +164,7 @@ export default function Home() {
   );
   const hasOrganization = activeOrganization !== undefined;
   const activeOrganizationDisplayName = activeOrganization?.name ?? "";
+  const activeOrganizationDetails = activeOrganization?.details ?? "";
   const activeProjects = activeOrganization?.projects ?? [];
   const appShellClassName = isSidebarOpen
     ? "app-shell"
@@ -175,7 +221,7 @@ export default function Home() {
 
     setOrganizations((currentOrganizations) => [
       ...currentOrganizations,
-      { name: nextOrganizationName, projects: [] },
+      { details: "", name: nextOrganizationName, projects: [] },
     ]);
     setActiveOrganizationName(nextOrganizationName);
     setDraftOrganizationName("");
@@ -221,6 +267,22 @@ export default function Home() {
   function createProject(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     createProjectFromInput();
+  }
+
+  function updateOrganizationDetails(nextDetails: string) {
+    if (!activeOrganizationName) {
+      return;
+    }
+
+    setOrganizations((currentOrganizations) =>
+      currentOrganizations.map((organization) => {
+        if (organization.name !== activeOrganizationName) {
+          return organization;
+        }
+
+        return { ...organization, details: nextDetails };
+      }),
+    );
   }
 
   return (
@@ -419,32 +481,72 @@ export default function Home() {
                 <h1>No organization yet</h1>
                 <p>Use the + button in the sidebar to create an organization.</p>
               </section>
-            ) : activeProjects.length === 0 ? (
-              <section className="empty-card">
-                <h1>No projects yet</h1>
-                <p>Create your first project and it will appear in the sidebar.</p>
-              </section>
             ) : (
-              <section className="activity-list">
-                {visibleProjects.map((project) => (
-                  <article className="activity-card" key={project}>
-                    <div className="activity-heading">
-                      <span className="status-dot complete" />
-                      <div>
-                        <strong>{project}</strong>
-                        <small>
-                          Project created in {activeOrganizationDisplayName}
-                        </small>
-                      </div>
+              <>
+                <section className="organization-details-panel">
+                  <div className="organization-details-editor">
+                    <div className="details-heading">
+                      <span>Organization details</span>
+                      <strong>Markdown</strong>
                     </div>
 
-                    <div className="summary-box">
-                      <p>Ready for the next workflow step.</p>
-                      <span>Local project</span>
+                    <textarea
+                      aria-label="Organization details"
+                      maxLength={2000}
+                      onChange={(event) =>
+                        updateOrganizationDetails(event.target.value)
+                      }
+                      placeholder={`# About this organization
+
+Write goals, notes, or links here.
+
+- First note
+- Second note`}
+                      value={activeOrganizationDetails}
+                    />
+                  </div>
+
+                  <div className="organization-details-preview">
+                    <div className="details-heading">
+                      <span>Preview</span>
+                      <strong>{activeOrganizationDisplayName}</strong>
                     </div>
-                  </article>
-                ))}
-              </section>
+
+                    <MarkdownPreview markdown={activeOrganizationDetails} />
+                  </div>
+                </section>
+
+                {activeProjects.length === 0 ? (
+                  <section className="empty-card">
+                    <h1>No projects yet</h1>
+                    <p>
+                      Create your first project and it will appear in the
+                      sidebar.
+                    </p>
+                  </section>
+                ) : (
+                  <section className="activity-list">
+                    {visibleProjects.map((project) => (
+                      <article className="activity-card" key={project}>
+                        <div className="activity-heading">
+                          <span className="status-dot complete" />
+                          <div>
+                            <strong>{project}</strong>
+                            <small>
+                              Project created in {activeOrganizationDisplayName}
+                            </small>
+                          </div>
+                        </div>
+
+                        <div className="summary-box">
+                          <p>Ready for the next workflow step.</p>
+                          <span>Local project</span>
+                        </div>
+                      </article>
+                    ))}
+                  </section>
+                )}
+              </>
             )}
           </div>
 

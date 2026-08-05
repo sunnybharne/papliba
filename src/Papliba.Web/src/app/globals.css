@@ -91,7 +91,8 @@ body {
 }
 
 button,
-input {
+input,
+textarea {
   font: inherit;
 }
 
@@ -561,6 +562,119 @@ kbd {
   padding: 24px;
 }
 
+.organization-details-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px;
+  max-width: 980px;
+}
+
+.organization-details-editor,
+.organization-details-preview {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  min-height: 220px;
+  padding: 16px;
+  border: 1px solid var(--border-soft);
+  border-radius: 14px;
+  background: var(--panel-deep);
+}
+
+.details-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.details-heading span {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.details-heading strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text);
+  font-size: 0.88rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.organization-details-editor textarea {
+  min-height: 150px;
+  resize: vertical;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  color: var(--text);
+  background: var(--composer);
+  line-height: 1.5;
+  outline: 0;
+}
+
+.organization-details-editor textarea::placeholder {
+  color: var(--text-soft);
+}
+
+.organization-markdown-preview {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  min-height: 150px;
+  padding: 12px;
+  border-radius: 12px;
+  background: var(--panel);
+}
+
+.organization-markdown-preview h2,
+.organization-markdown-preview h3,
+.organization-markdown-preview h4,
+.organization-markdown-preview p {
+  margin: 0;
+}
+
+.organization-markdown-preview h2,
+.organization-markdown-preview h3,
+.organization-markdown-preview h4 {
+  color: var(--text);
+  line-height: 1.25;
+}
+
+.organization-markdown-preview h2 {
+  font-size: 1.1rem;
+}
+
+.organization-markdown-preview h3 {
+  font-size: 1rem;
+}
+
+.organization-markdown-preview h4 {
+  font-size: 0.92rem;
+}
+
+.organization-markdown-preview p {
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.markdown-list-item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 8px;
+}
+
+.markdown-bullet {
+  width: 4px;
+  height: 4px;
+  margin-top: 8px;
+  border-radius: 50%;
+  background: var(--muted);
+}
+
 .empty-card {
   display: grid;
   max-width: 480px;
@@ -925,6 +1039,10 @@ kbd {
   .content-area,
   .site-content {
     padding: 20px;
+  }
+
+  .organization-details-panel {
+    grid-template-columns: 1fr;
   }
 }
 

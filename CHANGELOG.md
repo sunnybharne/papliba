@@ -13,6 +13,7 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 - Added the XML validation dependency to GitHub workflows.
 - Added smoother sidebar collapse and dropdown menu motion.
 - Replaced the collapsed sidebar hamburger with a cleaner sidebar icon.
+- Added editable markdown details for organizations.
 
 ## [0.1.0] - 2026-08-05
 
