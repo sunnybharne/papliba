@@ -28,10 +28,16 @@ The first implementation is intentionally small: a Next.js screen with one organ
 
 The web frontend uses Next.js + React + TypeScript.
 
+Public project website:
+
+```text
+https://sunnybharne.github.io/papliba/
+```
+
 Open the app at:
 
 ```text
-http://127.0.0.1:3000
+http://127.0.0.1:3000/app
 ```
 
 ## Architecture

@@ -6,6 +6,11 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ## [Unreleased]
 
+### Added
+
+- Added a GitHub Pages website with overview, changelog, and release notes pages.
+- Added a static export configuration for publishing the Next.js app to GitHub Pages.
+
 ## [0.1.0] - 2026-08-05
 
 ### Added
