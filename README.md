@@ -34,6 +34,12 @@ Public project website:
 https://sunnybharne.github.io/papliba/
 ```
 
+Documentation website:
+
+```text
+https://sunnybharne.github.io/papliba/docs/
+```
+
 Open the app at:
 
 ```text

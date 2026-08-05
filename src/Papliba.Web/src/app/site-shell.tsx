@@ -1,7 +1,8 @@
 import Link from "next/link";
 
 const siteLinks = [
-  { href: "/", label: "Overview" },
+  { href: "/", label: "Product" },
+  { href: "/docs", label: "Docs" },
   { href: "/app", label: "App demo" },
   { href: "/changelog", label: "Changelog" },
   { href: "/releases", label: "Releases" },
@@ -28,7 +29,7 @@ export function SiteShell({
         <div className="brand-row">
           <Link className="brand-name site-brand" href="/">
             <strong>Papliba</strong>
-            <span>docs</span>
+            <span>website</span>
           </Link>
         </div>
 

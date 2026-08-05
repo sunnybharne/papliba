@@ -16,6 +16,8 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 - Added editable markdown details for organizations.
 - Added organization pinning.
 - Added an organization actions menu with delete support.
+- Added a customer-facing marketing homepage.
+- Added a dedicated docs home page.
 
 ### Changed
 

@@ -15,7 +15,8 @@ const themeScript = `
 
 export const metadata: Metadata = {
   title: "Papliba",
-  description: "Papliba local-first workflow builder.",
+  description:
+    "Papliba is a local-first workflow builder for connected automation steps.",
 };
 
 type RootLayoutProps = {
