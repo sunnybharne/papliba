@@ -110,7 +110,6 @@ export function UserMenu({ onThemeChange, themeMode }: UserMenuProps) {
             type="button"
           >
             <span>Settings</span>
-            <small>Account and app</small>
             <span aria-hidden="true" className="menu-chevron">
               ›
             </span>
