@@ -1,4 +1,10 @@
-import type { PointerEvent as ReactPointerEvent } from "react";
+"use client";
+
+import {
+  useEffect,
+  useRef,
+  type PointerEvent as ReactPointerEvent,
+} from "react";
 
 import type { Organization, ThemeMode } from "../types";
 import { UserMenu } from "./UserMenu";
@@ -10,6 +16,7 @@ type SidebarProps = {
   isSidebarOpen: boolean;
   onCreateOrganization: () => void;
   onCreateProject: () => void;
+  onCloseOrganizationMenu: () => void;
   onOpenGlobalSearch: () => void;
   onOpenDeleteOrganizationDialog: (organizationName: string) => void;
   onOpenSidebar: () => void;
@@ -17,11 +24,8 @@ type SidebarProps = {
   onResizeSidebar: (event: ReactPointerEvent<HTMLDivElement>) => void;
   onSelectOrganization: (organizationName: string) => void;
   onThemeChange: (themeMode: ThemeMode) => void;
-  onToggleOrganizationActions: (organizationName: string) => void;
   onToggleOrganizationMenu: () => void;
-  onToggleOrganizationPin: (organizationName: string) => void;
   onToggleSidebar: () => void;
-  openOrganizationActionsName: string;
   organizationSearch: string;
   organizations: Organization[];
   themeMode: ThemeMode;
@@ -35,6 +39,7 @@ export function Sidebar({
   isSidebarOpen,
   onCreateOrganization,
   onCreateProject,
+  onCloseOrganizationMenu,
   onOpenGlobalSearch,
   onOpenDeleteOrganizationDialog,
   onOpenSidebar,
@@ -42,16 +47,33 @@ export function Sidebar({
   onResizeSidebar,
   onSelectOrganization,
   onThemeChange,
-  onToggleOrganizationActions,
   onToggleOrganizationMenu,
-  onToggleOrganizationPin,
   onToggleSidebar,
-  openOrganizationActionsName,
   organizationSearch,
   organizations,
   themeMode,
   visibleOrganizations,
 }: SidebarProps) {
+  const organizationSelectRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isOrganizationMenuOpen) {
+      return;
+    }
+
+    function closeWhenClickingAway(event: PointerEvent) {
+      if (!organizationSelectRef.current?.contains(event.target as Node)) {
+        onCloseOrganizationMenu();
+      }
+    }
+
+    window.addEventListener("pointerdown", closeWhenClickingAway);
+
+    return () => {
+      window.removeEventListener("pointerdown", closeWhenClickingAway);
+    };
+  }, [isOrganizationMenuOpen, onCloseOrganizationMenu]);
+
   return (
     <aside
       aria-label="Papliba sidebar"
@@ -103,7 +125,7 @@ export function Sidebar({
               onOpenSidebar={onOpenSidebar}
             />
           ) : (
-            <div className="organization-select">
+            <div className="organization-select" ref={organizationSelectRef}>
               {activeOrganization && (
                 <div className="organization-active-row">
                   <button
@@ -119,18 +141,8 @@ export function Sidebar({
                     <span aria-hidden="true" className="organization-arrow" />
                   </button>
 
-                  <PinButton
-                    isPinned={activeOrganization.isPinned}
-                    organizationName={activeOrganization.name}
-                    onToggle={onToggleOrganizationPin}
-                  />
-
-                  <OrganizationActions
-                    isOpen={
-                      openOrganizationActionsName === activeOrganization.name
-                    }
+                  <DeleteOrganizationButton
                     onRequestDelete={onOpenDeleteOrganizationDialog}
-                    onToggle={onToggleOrganizationActions}
                     organizationName={activeOrganization.name}
                   />
                 </div>
@@ -158,13 +170,9 @@ export function Sidebar({
                   ) : (
                     visibleOrganizations.map((organization) => (
                       <OrganizationMenuRow
-                        isActionsOpen={
-                          openOrganizationActionsName === organization.name
-                        }
                         key={organization.name}
                         onOpenDeleteDialog={onOpenDeleteOrganizationDialog}
                         onSelect={onSelectOrganization}
-                        onToggleActions={onToggleOrganizationActions}
                         organization={organization}
                       />
                     ))
@@ -249,30 +257,21 @@ function EmptyOrganizationRow({
 }
 
 type OrganizationMenuRowProps = {
-  isActionsOpen: boolean;
   onOpenDeleteDialog: (organizationName: string) => void;
   onSelect: (organizationName: string) => void;
-  onToggleActions: (organizationName: string) => void;
   organization: Organization;
 };
 
 function OrganizationMenuRow({
-  isActionsOpen,
   onOpenDeleteDialog,
   onSelect,
-  onToggleActions,
   organization,
 }: OrganizationMenuRowProps) {
-  const label = organization.isPinned
-    ? `${organization.name}, pinned`
-    : organization.name;
-
   return (
     <div className="organization-menu-row">
       <button
-        aria-label={label}
+        aria-label={organization.name}
         className="organization-item organization-menu-item"
-        data-pinned={organization.isPinned}
         onClick={() => onSelect(organization.name)}
         type="button"
       >
@@ -280,95 +279,52 @@ function OrganizationMenuRow({
         <span className="organization-text">
           <strong>{organization.name}</strong>
         </span>
-        {organization.isPinned && (
-          <span aria-hidden="true" className="pinned-marker">
-            <FavoriteIcon />
-          </span>
-        )}
       </button>
 
-      <OrganizationActions
-        isOpen={isActionsOpen}
+      <DeleteOrganizationButton
         onRequestDelete={onOpenDeleteDialog}
-        onToggle={onToggleActions}
         organizationName={organization.name}
       />
     </div>
   );
 }
 
-type PinButtonProps = {
-  isPinned: boolean;
-  onToggle: (organizationName: string) => void;
-  organizationName: string;
-};
-
-function PinButton({ isPinned, onToggle, organizationName }: PinButtonProps) {
-  return (
-    <button
-      aria-label={isPinned ? "Unpin organization" : "Pin organization"}
-      aria-pressed={isPinned}
-      className="pin-button"
-      data-pinned={isPinned}
-      onClick={() => onToggle(organizationName)}
-      type="button"
-    >
-      <FavoriteIcon />
-    </button>
-  );
-}
-
-type OrganizationActionsProps = {
-  isOpen: boolean;
+type DeleteOrganizationButtonProps = {
   onRequestDelete: (organizationName: string) => void;
-  onToggle: (organizationName: string) => void;
   organizationName: string;
 };
 
-function OrganizationActions({
-  isOpen,
+function DeleteOrganizationButton({
   onRequestDelete,
-  onToggle,
   organizationName,
-}: OrganizationActionsProps) {
+}: DeleteOrganizationButtonProps) {
   return (
     <div className="organization-actions">
       <button
-        aria-expanded={isOpen}
-        aria-haspopup="menu"
-        aria-label={`Open ${organizationName} actions`}
-        className="organization-more-button"
-        onClick={() => onToggle(organizationName)}
+        aria-label={`Delete ${organizationName}`}
+        className="organization-delete-button"
+        onClick={() => onRequestDelete(organizationName)}
         type="button"
       >
-        <span aria-hidden="true">...</span>
+        <TrashIcon />
       </button>
-
-      {isOpen && (
-        <div className="organization-action-menu" role="menu">
-          <button
-            className="danger-menu-item"
-            onClick={() => onRequestDelete(organizationName)}
-            role="menuitem"
-            type="button"
-          >
-            Delete
-          </button>
-        </div>
-      )}
     </div>
   );
 }
 
-function FavoriteIcon() {
+function TrashIcon() {
   return (
     <svg
       aria-hidden="true"
-      className="favorite-icon"
+      className="organization-delete-icon"
       fill="none"
       viewBox="0 0 24 24"
     >
-      <path d="m12 3 2.7 5.5 6.1.9-4.4 4.3 1 6.1-5.4-2.9-5.4 2.9 1-6.1-4.4-4.3 6.1-.9L12 3Z" />
+      <path d="M4 7h16" />
+      <path d="M10 11v6" />
+      <path d="M14 11v6" />
+      <path d="M6 7l1 14h10l1-14" />
+      <path d="M9 7V4h6v3" />
     </svg>
   );
 }
@@ -421,7 +377,12 @@ function SidebarItemIcon({ name }: { name: SidebarItemIconName }) {
       viewBox="0 0 24 24"
     >
       {name === "organization" && (
-        <path d="M4 7h6l2 2h8v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2Z" />
+        <>
+          <circle cx="12" cy="12" r="8" />
+          <path d="M4 12h16" />
+          <path d="M12 4a12 12 0 0 1 0 16" />
+          <path d="M12 4a12 12 0 0 0 0 16" />
+        </>
       )}
       {name === "project" && (
         <>

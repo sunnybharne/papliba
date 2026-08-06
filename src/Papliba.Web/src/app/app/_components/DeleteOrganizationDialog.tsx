@@ -18,10 +18,12 @@ export function DeleteOrganizationDialog({
   onSubmit,
 }: DeleteOrganizationDialogProps) {
   return (
-    <div className="dialog-backdrop">
+    <div className="dialog-backdrop" onClick={onCancel}>
       <section
+        aria-modal="true"
         aria-labelledby="delete-organization-dialog-title"
         className="dialog-panel"
+        onClick={(event) => event.stopPropagation()}
         role="dialog"
       >
         <h2 id="delete-organization-dialog-title">Delete organization</h2>

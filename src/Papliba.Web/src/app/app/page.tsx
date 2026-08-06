@@ -46,7 +46,7 @@ function getVisibleOrganizations(
   organizationSearch: string,
 ) {
   const searchText = organizationSearch.trim().toLowerCase();
-  const matchingOrganizations = organizations
+  return organizations
     .filter((organization) => organization.name !== activeOrganizationName)
     .filter((organization) => {
       return (
@@ -54,11 +54,6 @@ function getVisibleOrganizations(
         organization.name.toLowerCase().includes(searchText)
       );
     });
-
-  return [
-    ...matchingOrganizations.filter((organization) => organization.isPinned),
-    ...matchingOrganizations.filter((organization) => !organization.isPinned),
-  ];
 }
 
 export default function Home() {
@@ -81,8 +76,6 @@ export default function Home() {
   const [isOrganizationMenuOpen, setIsOrganizationMenuOpen] = useState(false);
   const [isOrganizationDialogOpen, setIsOrganizationDialogOpen] =
     useState(false);
-  const [openOrganizationActionsName, setOpenOrganizationActionsName] =
-    useState("");
   const [deleteOrganizationName, setDeleteOrganizationName] = useState("");
   const [deleteConfirmationText, setDeleteConfirmationText] = useState("");
   const [organizationNameError, setOrganizationNameError] = useState("");
@@ -161,7 +154,6 @@ export default function Home() {
   function openOrganizationDialog() {
     setDraftOrganizationName("");
     setOrganizationSearch("");
-    setOpenOrganizationActionsName("");
     setDeleteOrganizationName("");
     setDeleteConfirmationText("");
     setOrganizationNameError("");
@@ -190,10 +182,14 @@ export default function Home() {
 
   function toggleOrganizationMenu() {
     setOrganizationSearch("");
-    setOpenOrganizationActionsName("");
     setIsOrganizationMenuOpen((currentIsOrganizationMenuOpen) => {
       return !currentIsOrganizationMenuOpen;
     });
+  }
+
+  function closeOrganizationMenu() {
+    setIsOrganizationMenuOpen(false);
+    setOrganizationSearch("");
   }
 
   function openSidebarOrToggleOrganizationMenu() {
@@ -208,21 +204,14 @@ export default function Home() {
   function selectOrganization(organizationName: string) {
     setActiveOrganizationName(organizationName);
     setIsOrganizationMenuOpen(false);
-    setOpenOrganizationActionsName("");
     setOrganizationSearch("");
     setProjectName("");
-  }
-
-  function toggleOrganizationActions(organizationName: string) {
-    setOpenOrganizationActionsName((currentOrganizationName) => {
-      return currentOrganizationName === organizationName ? "" : organizationName;
-    });
   }
 
   function openDeleteOrganizationDialog(organizationName: string) {
     setDeleteOrganizationName(organizationName);
     setDeleteConfirmationText("");
-    setOpenOrganizationActionsName("");
+    setIsOrganizationMenuOpen(false);
   }
 
   function closeDeleteOrganizationDialog() {
@@ -246,8 +235,7 @@ export default function Home() {
     setOrganizations((currentOrganizations) => [
       ...currentOrganizations,
       {
-        details: "",
-        isPinned: false,
+        details: `# ${nextOrganizationName}`,
         name: nextOrganizationName,
         projects: [],
       },
@@ -257,7 +245,6 @@ export default function Home() {
     setOrganizationNameError("");
     setIsOrganizationDialogOpen(false);
     setIsOrganizationMenuOpen(false);
-    setOpenOrganizationActionsName("");
     setOrganizationSearch("");
   }
 
@@ -314,25 +301,12 @@ export default function Home() {
     );
   }
 
-  function toggleOrganizationPin(organizationName: string) {
-    setOrganizations((currentOrganizations) =>
-      currentOrganizations.map((organization) => {
-        if (organization.name !== organizationName) {
-          return organization;
-        }
-
-        return { ...organization, isPinned: !organization.isPinned };
-      }),
-    );
-  }
-
   function deleteOrganization(organizationName: string) {
     const remainingOrganizations = organizations.filter((organization) => {
       return organization.name !== organizationName;
     });
 
     setOrganizations(remainingOrganizations);
-    setOpenOrganizationActionsName("");
     setDeleteOrganizationName("");
     setDeleteConfirmationText("");
     setIsOrganizationMenuOpen(false);
@@ -366,6 +340,7 @@ export default function Home() {
           activeProjects={activeProjects}
           isOrganizationMenuOpen={isOrganizationMenuOpen}
           isSidebarOpen={isSidebarOpen}
+          onCloseOrganizationMenu={closeOrganizationMenu}
           onCreateOrganization={openOrganizationDialog}
           onCreateProject={createProjectFromInput}
           onOpenGlobalSearch={openGlobalSearch}
@@ -375,11 +350,8 @@ export default function Home() {
           onResizeSidebar={resizeSidebar}
           onSelectOrganization={selectOrganization}
           onThemeChange={changeThemeMode}
-          onToggleOrganizationActions={toggleOrganizationActions}
           onToggleOrganizationMenu={openSidebarOrToggleOrganizationMenu}
-          onToggleOrganizationPin={toggleOrganizationPin}
           onToggleSidebar={toggleSidebar}
-          openOrganizationActionsName={openOrganizationActionsName}
           organizationSearch={organizationSearch}
           organizations={organizations}
           themeMode={themeMode}

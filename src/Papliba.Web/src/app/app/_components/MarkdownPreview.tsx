@@ -11,7 +11,7 @@ export function MarkdownPreview({ markdown }: MarkdownPreviewProps) {
   if (lines.length === 0) {
     return (
       <div className="organization-markdown-preview">
-        <p className="muted-copy">No organization details yet.</p>
+        <p className="muted-copy">No README yet.</p>
       </div>
     );
   }

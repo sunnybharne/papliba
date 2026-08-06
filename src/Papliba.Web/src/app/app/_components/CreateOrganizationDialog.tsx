@@ -18,10 +18,12 @@ export function CreateOrganizationDialog({
   onSubmit,
 }: CreateOrganizationDialogProps) {
   return (
-    <div className="dialog-backdrop">
+    <div className="dialog-backdrop" onClick={onCancel}>
       <section
+        aria-modal="true"
         aria-labelledby="organization-dialog-title"
         className="dialog-panel"
+        onClick={(event) => event.stopPropagation()}
         role="dialog"
       >
         <h2 id="organization-dialog-title">Create organization</h2>

@@ -1,4 +1,4 @@
-import type { FormEvent, RefObject } from "react";
+import { useState, type FormEvent, type RefObject } from "react";
 
 import { MarkdownPreview } from "./MarkdownPreview";
 
@@ -42,7 +42,7 @@ export function WorkspacePanel({
           <>
             <OrganizationDetails
               details={activeOrganizationDetails}
-              name={activeOrganizationName}
+              key={activeOrganizationName}
               onChange={onUpdateOrganizationDetails}
             />
 
@@ -110,46 +110,95 @@ function WorkspaceFolderIcon() {
 
 type OrganizationDetailsProps = {
   details: string;
-  name: string;
   onChange: (details: string) => void;
 };
 
 function OrganizationDetails({
   details,
-  name,
   onChange,
 }: OrganizationDetailsProps) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [draftDetails, setDraftDetails] = useState(details);
+
+  function startEditing() {
+    setDraftDetails(details);
+    setIsEditing(true);
+  }
+
+  function cancelEditing() {
+    setDraftDetails(details);
+    setIsEditing(false);
+  }
+
+  function saveDetails() {
+    onChange(draftDetails);
+    setIsEditing(false);
+  }
+
   return (
     <section className="organization-details-panel">
-      <div className="organization-details-editor">
-        <div className="details-heading">
-          <span>Organization details</span>
-          <strong>Markdown</strong>
+      <div className="organization-details-card">
+        <div className="details-header">
+          <div className="details-heading">
+            <span>README</span>
+          </div>
+
+          {isEditing ? (
+            <div className="details-actions">
+              <button
+                className="ghost-button"
+                onClick={cancelEditing}
+                type="button"
+              >
+                Cancel
+              </button>
+              <button
+                className="primary-button"
+                onClick={saveDetails}
+                type="button"
+              >
+                Save
+              </button>
+            </div>
+          ) : (
+            <button
+              aria-label="Edit organization details"
+              className="details-icon-button"
+              onClick={startEditing}
+              type="button"
+            >
+              <EditIcon />
+            </button>
+          )}
         </div>
 
-        <textarea
-          aria-label="Organization details"
-          maxLength={2000}
-          onChange={(event) => onChange(event.target.value)}
-          placeholder={`# About this organization
+        {isEditing ? (
+          <textarea
+            aria-label="Organization README"
+            maxLength={2000}
+            onChange={(event) => setDraftDetails(event.target.value)}
+            placeholder={`# organization-name
 
-Write goals, notes, or links here.
+Write notes, goals, or links here.
 
 - First note
 - Second note`}
-          value={details}
-        />
-      </div>
-
-      <div className="organization-details-preview">
-        <div className="details-heading">
-          <span>Preview</span>
-          <strong>{name}</strong>
-        </div>
-
-        <MarkdownPreview markdown={details} />
+            value={draftDetails}
+          />
+        ) : (
+          <MarkdownPreview markdown={details} />
+        )}
       </div>
     </section>
+  );
+}
+
+function EditIcon() {
+  return (
+    <svg aria-hidden="true" fill="none" viewBox="0 0 24 24">
+      <path d="m14.5 5.5 4 4L8 20H4v-4L14.5 5.5Z" />
+      <path d="m13 7 4 4" />
+    </svg>
   );
 }
 

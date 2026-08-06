@@ -6,6 +6,31 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-08-06
+
+### Changed
+
+- Closed the Settings window when clicking outside it.
+- Made the Settings window match the compact account menu style.
+- Simplified account menu code and removed stale sidebar styles.
+- Clarified the architecture diagram with the web UI and local .NET runner split.
+- Changed the selected theme state to use the neutral app selection style.
+- Matched the create organization dialog to the compact popup style.
+- Unified popup surface colors across account, settings, search, and organization dialogs.
+- Made created organization rows compact and replaced pin/actions controls with a direct delete icon.
+- Replaced the organization folder icon with a globe icon.
+- Added subtle right-side contrast to the Settings window.
+- Darkened the Settings content side to better match the app workspace.
+- Grouped account settings into one compact list with a divider.
+- Extended the active organization highlight across the delete icon and hid the dropdown arrow until hover.
+- Restyled account settings as a grouped settings card with row descriptions.
+- Removed the Profile type row from Account settings.
+- Removed the Account name helper text and compacted the row.
+- Replaced the split organization details editor and preview with one edit/save panel.
+- Replaced the organization details Edit text button with an icon button.
+- Closed the organization dropdown when clicking outside it.
+- Moved the organization name into the editable README content.
+
 ## [0.3.0] - 2026-08-06
 
 ### Changed
