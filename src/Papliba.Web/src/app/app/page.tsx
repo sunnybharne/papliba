@@ -1,9 +1,16 @@
 "use client";
 
-import { type FormEvent, useRef, useState } from "react";
+import {
+  type CSSProperties,
+  type FormEvent,
+  type PointerEvent as ReactPointerEvent,
+  useRef,
+  useState,
+} from "react";
 
 import { CreateOrganizationDialog } from "./_components/CreateOrganizationDialog";
 import { DeleteOrganizationDialog } from "./_components/DeleteOrganizationDialog";
+import { GlobalSearchDialog } from "./_components/GlobalSearchDialog";
 import { Sidebar } from "./_components/Sidebar";
 import { WorkspacePanel } from "./_components/WorkspacePanel";
 import {
@@ -12,6 +19,11 @@ import {
   themeStorageKey,
 } from "./constants";
 import type { Organization, ThemeMode } from "./types";
+
+const collapsedSidebarWidth = 56;
+const defaultSidebarWidth = 260;
+const maximumSidebarWidth = 380;
+const minimumSidebarWidth = 220;
 
 function isThemeMode(value: string | null): value is ThemeMode {
   return value === "system" || value === "light" || value === "dark";
@@ -74,6 +86,10 @@ export default function Home() {
   const [deleteOrganizationName, setDeleteOrganizationName] = useState("");
   const [deleteConfirmationText, setDeleteConfirmationText] = useState("");
   const [organizationNameError, setOrganizationNameError] = useState("");
+  const [isGlobalSearchOpen, setIsGlobalSearchOpen] = useState(false);
+  const [globalSearchQuery, setGlobalSearchQuery] = useState("");
+  const [sidebarWidth, setSidebarWidth] = useState(defaultSidebarWidth);
+  const [isResizingSidebar, setIsResizingSidebar] = useState(false);
 
   const activeOrganization = organizations.find((organization) => {
     return organization.name === activeOrganizationName;
@@ -81,9 +97,16 @@ export default function Home() {
   const hasOrganization = activeOrganization !== undefined;
   const activeOrganizationDetails = activeOrganization?.details ?? "";
   const activeProjects = activeOrganization?.projects ?? [];
-  const appShellClassName = isSidebarOpen
-    ? "app-shell"
-    : "app-shell sidebar-collapsed";
+  const appShellClassName = [
+    "app-shell",
+    !isSidebarOpen && "sidebar-collapsed",
+    isResizingSidebar && "sidebar-resizing",
+  ]
+    .filter(Boolean)
+    .join(" ");
+  const appShellStyle = {
+    "--sidebar-width": `${isSidebarOpen ? sidebarWidth : collapsedSidebarWidth}px`,
+  } as CSSProperties;
   const visibleOrganizations = getVisibleOrganizations(
     organizations,
     activeOrganizationName,
@@ -106,6 +129,35 @@ export default function Home() {
     setIsSidebarOpen(true);
   }
 
+  function resizeSidebar(event: ReactPointerEvent<HTMLDivElement>) {
+    event.preventDefault();
+
+    const startX = event.clientX;
+    const startWidth = sidebarWidth;
+
+    function moveSidebar(pointerEvent: PointerEvent) {
+      const nextWidth = startWidth + pointerEvent.clientX - startX;
+
+      setSidebarWidth(
+        Math.min(maximumSidebarWidth, Math.max(minimumSidebarWidth, nextWidth)),
+      );
+    }
+
+    function stopResizingSidebar() {
+      setIsResizingSidebar(false);
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+      window.removeEventListener("pointermove", moveSidebar);
+      window.removeEventListener("pointerup", stopResizingSidebar);
+    }
+
+    setIsResizingSidebar(true);
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+    window.addEventListener("pointermove", moveSidebar);
+    window.addEventListener("pointerup", stopResizingSidebar);
+  }
+
   function openOrganizationDialog() {
     setDraftOrganizationName("");
     setOrganizationSearch("");
@@ -115,6 +167,16 @@ export default function Home() {
     setOrganizationNameError("");
     setIsOrganizationMenuOpen(false);
     setIsOrganizationDialogOpen(true);
+  }
+
+  function openGlobalSearch() {
+    setGlobalSearchQuery("");
+    setIsGlobalSearchOpen(true);
+  }
+
+  function closeGlobalSearch() {
+    setIsGlobalSearchOpen(false);
+    setGlobalSearchQuery("");
   }
 
   function closeOrganizationDialog() {
@@ -294,7 +356,11 @@ export default function Home() {
 
   return (
     <main className="shell">
-      <section className={appShellClassName} aria-label="Papliba app">
+      <section
+        aria-label="Papliba app"
+        className={appShellClassName}
+        style={appShellStyle}
+      >
         <Sidebar
           activeOrganization={activeOrganization}
           activeProjects={activeProjects}
@@ -302,9 +368,11 @@ export default function Home() {
           isSidebarOpen={isSidebarOpen}
           onCreateOrganization={openOrganizationDialog}
           onCreateProject={createProjectFromInput}
+          onOpenGlobalSearch={openGlobalSearch}
           onOpenDeleteOrganizationDialog={openDeleteOrganizationDialog}
           onOpenSidebar={openSidebar}
           onOrganizationSearchChange={setOrganizationSearch}
+          onResizeSidebar={resizeSidebar}
           onSelectOrganization={selectOrganization}
           onThemeChange={changeThemeMode}
           onToggleOrganizationActions={toggleOrganizationActions}
@@ -349,6 +417,18 @@ export default function Home() {
           onCancel={closeDeleteOrganizationDialog}
           onConfirmationChange={setDeleteConfirmationText}
           onSubmit={confirmDeleteOrganization}
+        />
+      )}
+
+      {isGlobalSearchOpen && (
+        <GlobalSearchDialog
+          activeOrganizationName={activeOrganizationName}
+          onClose={closeGlobalSearch}
+          onCreateOrganization={openOrganizationDialog}
+          onQueryChange={setGlobalSearchQuery}
+          onSelectOrganization={selectOrganization}
+          organizations={organizations}
+          query={globalSearchQuery}
         />
       )}
     </main>

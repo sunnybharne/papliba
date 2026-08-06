@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { themeOptions, userInitials, userName } from "../constants";
 import type { ThemeMode } from "../types";
@@ -13,6 +13,7 @@ type UserMenuProps = {
 type SettingsSection = "account" | "appearance";
 
 export function UserMenu({ onThemeChange, themeMode }: UserMenuProps) {
+  const menuRef = useRef<HTMLDivElement>(null);
   const [isOpen, setIsOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [settingsSection, setSettingsSection] =
@@ -21,6 +22,24 @@ export function UserMenu({ onThemeChange, themeMode }: UserMenuProps) {
   const activeThemeLabel =
     themeOptions.find((option) => option.value === themeMode)?.label ?? "System";
 
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    function closeWhenClickingAway(event: PointerEvent) {
+      if (!menuRef.current?.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+
+    window.addEventListener("pointerdown", closeWhenClickingAway);
+
+    return () => {
+      window.removeEventListener("pointerdown", closeWhenClickingAway);
+    };
+  }, [isOpen]);
+
   function openSettings(nextSettingsSection: SettingsSection) {
     setSettingsSection(nextSettingsSection);
     setIsOpen(false);
@@ -28,7 +47,7 @@ export function UserMenu({ onThemeChange, themeMode }: UserMenuProps) {
   }
 
   return (
-    <div className="user-menu">
+    <div className="user-menu" ref={menuRef}>
       <div className="account-footer-row">
         <button
           aria-expanded={isOpen}
@@ -42,9 +61,6 @@ export function UserMenu({ onThemeChange, themeMode }: UserMenuProps) {
           <span>
             <strong>{userName}</strong>
           </span>
-        </button>
-        <button aria-label="Help" className="help-button" type="button">
-          ?
         </button>
       </div>
 
@@ -64,10 +80,6 @@ export function UserMenu({ onThemeChange, themeMode }: UserMenuProps) {
 
           <div className="account-menu-divider" />
 
-          <AccountMenuItem icon="usage" label="Usage remaining" />
-          <AccountMenuItem icon="pet" label="Show pet" />
-          <AccountMenuItem icon="invite" label="Invite a friend" />
-
           <button
             className="account-menu-item"
             onClick={() => openSettings("account")}
@@ -76,9 +88,6 @@ export function UserMenu({ onThemeChange, themeMode }: UserMenuProps) {
           >
             <MenuIcon name="settings" />
             <span>Settings</span>
-            <span aria-hidden="true" className="menu-shortcut">
-              ⌘,
-            </span>
             <span aria-hidden="true" className="menu-chevron">
               ›
             </span>
@@ -191,16 +200,11 @@ function AccountMenuItem({ icon, label }: AccountMenuItemProps) {
     <button className="account-menu-item" role="menuitem" type="button">
       <MenuIcon name={icon} />
       <span>{label}</span>
-      {icon === "usage" && (
-        <span aria-hidden="true" className="menu-chevron">
-          ›
-        </span>
-      )}
     </button>
   );
 }
 
-type MenuIconName = "invite" | "logout" | "pet" | "settings" | "usage";
+type MenuIconName = "logout" | "settings";
 
 function MenuIcon({ name }: { name: MenuIconName }) {
   return (
@@ -210,30 +214,14 @@ function MenuIcon({ name }: { name: MenuIconName }) {
       fill="none"
       viewBox="0 0 24 24"
     >
-      {name === "usage" && (
-        <>
-          <path d="M4 13a8 8 0 0 1 16 0" />
-          <path d="M12 13l4-4" />
-        </>
-      )}
-      {name === "pet" && (
-        <>
-          <circle cx="7" cy="10" r="2" />
-          <circle cx="12" cy="7" r="2" />
-          <circle cx="17" cy="10" r="2" />
-          <path d="M8 17c1.4-3 6.6-3 8 0 1 2.2-1 4-4 4s-5-1.8-4-4Z" />
-        </>
-      )}
-      {name === "invite" && (
-        <>
-          <path d="M21 3 3 11l7 3 3 7 8-18Z" />
-          <path d="m10 14 4-4" />
-        </>
-      )}
       {name === "settings" && (
         <>
-          <circle cx="12" cy="12" r="3" />
-          <path d="M12 3v3M12 18v3M4.2 7.5l2.6 1.5M17.2 15l2.6 1.5M19.8 7.5 17.2 9M6.8 15l-2.6 1.5" />
+          <path d="M4 7h10" />
+          <path d="M18 7h2" />
+          <circle cx="16" cy="7" r="2" />
+          <path d="M4 17h2" />
+          <path d="M10 17h10" />
+          <circle cx="8" cy="17" r="2" />
         </>
       )}
       {name === "logout" && (

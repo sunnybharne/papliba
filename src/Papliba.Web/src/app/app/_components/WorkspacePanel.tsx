@@ -32,10 +32,11 @@ export function WorkspacePanel({
         hasOrganization={hasOrganization}
       />
 
-      <div className="content-area">
+      <div className={hasOrganization ? "content-area" : "content-area empty"}>
         {!hasOrganization ? (
-          <section className="empty-card">
-            <h1>No organization yet</h1>
+          <section className="empty-card organization-empty-card">
+            <h1>Create organization</h1>
+            <p>Click the + button to create your first organization.</p>
           </section>
         ) : (
           <>
@@ -84,15 +85,26 @@ function WorkspaceHeader({
 }: WorkspaceHeaderProps) {
   return (
     <header className="workspace-header">
-      <div className="workspace-title-row">
-        <div className="workspace-title-text">
-          {hasOrganization && <span>Organization</span>}
-          <strong>
-            {hasOrganization ? activeOrganizationName : "No organization"}
-          </strong>
+      {hasOrganization && (
+        <div className="workspace-title-row">
+          <WorkspaceFolderIcon />
+          <strong>{activeOrganizationName}</strong>
         </div>
-      </div>
+      )}
     </header>
+  );
+}
+
+function WorkspaceFolderIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      className="workspace-title-icon"
+      fill="none"
+      viewBox="0 0 24 24"
+    >
+      <path d="M4 7h6l2 2h8v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2Z" />
+    </svg>
   );
 }
 

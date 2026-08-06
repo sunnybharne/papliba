@@ -6,9 +6,48 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-08-06
+
 ### Changed
 
-- Added a compact global search and notification header to the sidebar.
+- Added mouse resizing for the expanded app sidebar.
+- Made sidebar, dropdown, and search animations snappier.
+- Tightened the sidebar account popup rows, text, and avatar.
+- Reduced the sidebar account popup text size.
+- Replaced the repeated no-organization empty state with create guidance.
+- Made the no-organization empty state smaller and quieter.
+- Matched the workspace header title size to the sidebar organization row.
+- Softened the workspace header title and icon color.
+- Reduced the workspace header title weight.
+- Darkened and shortened the sidebar username footer band.
+- Added a darker sidebar footer band behind the username area.
+- Reduced the workspace header height.
+- Removed the workspace header options ellipsis.
+- Matched sidebar account row hover radius with the no-organization row.
+- Reduced the sidebar profile avatar size to match the menu icon scale.
+- Simplified the sidebar account popup to Settings and Log out.
+- Closed the sidebar account popup when clicking outside it.
+- Made the sidebar account popup more compact.
+- Matched the account menu profile row height to the other menu rows.
+- Removed the help question mark from the sidebar username footer.
+- Matched the sidebar username row height to the no-organization row.
+- Restyled the sidebar account footer to match the flat reference layout.
+- Reduced the sidebar organization folder icon size.
+- Reduced the sidebar no-organization row hover radius.
+- Tuned the sidebar add button color and glyph size.
+- Changed the dark sidebar background to the sampled `#252525` tone.
+- Matched the Papliba sidebar title color to the no-organization row.
+- Matched the sidebar organization icon to the workspace header folder icon.
+- Slightly brightened the sidebar no-organization row text color.
+- Muted the sidebar no-organization row text color.
+- Reduced the height of the sidebar no-organization row.
+- Reduced the height of the no-organization empty card.
+- Matched the sidebar search and collapse icon brightness.
+- Removed the dropdown arrow from the Papliba sidebar title.
+- Kept the app shell in two columns when the browser is resized.
+- Updated the workspace header height, title styling, and icon layout.
+- Added a global search popup opened from the sidebar search icon.
+- Added a compact global search header to the sidebar.
 - Restyled sidebar organization and project rows with simpler icon menu items.
 - Restyled the lower-left account menu to match the compact reference layout.
 - Removed extra subtext from the Settings menu item.

@@ -1,3 +1,5 @@
+import type { PointerEvent as ReactPointerEvent } from "react";
+
 import type { Organization, ThemeMode } from "../types";
 import { UserMenu } from "./UserMenu";
 
@@ -8,9 +10,11 @@ type SidebarProps = {
   isSidebarOpen: boolean;
   onCreateOrganization: () => void;
   onCreateProject: () => void;
+  onOpenGlobalSearch: () => void;
   onOpenDeleteOrganizationDialog: (organizationName: string) => void;
   onOpenSidebar: () => void;
   onOrganizationSearchChange: (value: string) => void;
+  onResizeSidebar: (event: ReactPointerEvent<HTMLDivElement>) => void;
   onSelectOrganization: (organizationName: string) => void;
   onThemeChange: (themeMode: ThemeMode) => void;
   onToggleOrganizationActions: (organizationName: string) => void;
@@ -31,9 +35,11 @@ export function Sidebar({
   isSidebarOpen,
   onCreateOrganization,
   onCreateProject,
+  onOpenGlobalSearch,
   onOpenDeleteOrganizationDialog,
   onOpenSidebar,
   onOrganizationSearchChange,
+  onResizeSidebar,
   onSelectOrganization,
   onThemeChange,
   onToggleOrganizationActions,
@@ -55,22 +61,16 @@ export function Sidebar({
       <div className="brand-row">
         <div className="brand-name">
           <strong>Papliba</strong>
-          <ChevronDownIcon />
         </div>
         <div className="brand-actions">
           <button
+            aria-haspopup="dialog"
             aria-label="Global search"
             className="brand-icon-button"
+            onClick={onOpenGlobalSearch}
             type="button"
           >
             <SearchIcon />
-          </button>
-          <button
-            aria-label="Notifications"
-            className="brand-icon-button"
-            type="button"
-          >
-            <BellIcon />
           </button>
           <button
             aria-label={isSidebarOpen ? "Collapse sidebar" : "Open sidebar"}
@@ -210,6 +210,8 @@ export function Sidebar({
       <div className="sidebar-footer">
         <UserMenu onThemeChange={onThemeChange} themeMode={themeMode} />
       </div>
+
+      <div className="sidebar-resize-handle" onPointerDown={onResizeSidebar} />
     </aside>
   );
 }
@@ -394,19 +396,6 @@ function SidebarToggleIcon({ isOpen }: { isOpen: boolean }) {
   );
 }
 
-function ChevronDownIcon() {
-  return (
-    <svg
-      aria-hidden="true"
-      className="brand-chevron-icon"
-      fill="none"
-      viewBox="0 0 24 24"
-    >
-      <path d="m7 10 5 5 5-5" />
-    </svg>
-  );
-}
-
 function SearchIcon() {
   return (
     <svg
@@ -421,35 +410,18 @@ function SearchIcon() {
   );
 }
 
-function BellIcon() {
-  return (
-    <svg
-      aria-hidden="true"
-      className="brand-action-icon"
-      fill="none"
-      viewBox="0 0 24 24"
-    >
-      <path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9Z" />
-      <path d="M10 21h4" />
-    </svg>
-  );
-}
-
 type SidebarItemIconName = "organization" | "project";
 
 function SidebarItemIcon({ name }: { name: SidebarItemIconName }) {
   return (
     <svg
       aria-hidden="true"
-      className="sidebar-item-icon"
+      className={`sidebar-item-icon sidebar-item-icon-${name}`}
       fill="none"
       viewBox="0 0 24 24"
     >
       {name === "organization" && (
-        <>
-          <rect height="14" rx="2.5" width="14" x="5" y="5" />
-          <path d="M9 9h6M9 13h6M9 17h3" />
-        </>
+        <path d="M4 7h6l2 2h8v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2Z" />
       )}
       {name === "project" && (
         <>
