@@ -6,6 +6,28 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ## [Unreleased]
 
+### Changed
+
+- Simplified the app hierarchy to Projects and Workflows.
+- Kept a starter project for new users instead of asking them to create every layer first.
+- Made the global search dialog more compact.
+- Changed project creation to use the sidebar add button and a popup.
+- Matched the workspace header project icon with the sidebar project icon.
+- Listed projects one after another in the sidebar instead of using a dropdown.
+- Added project deletion in the sidebar.
+- Added project name rules.
+- Removed project README/Markdown editing from the app.
+- Focused the selected project screen on workflows.
+- Tightened the collapsed sidebar width and made collapsed item clicks reopen the sidebar.
+- Added double-click rename for projects.
+- Added workflow creation inside selected projects.
+- Added a basic workflow canvas with rectangle nodes, dragging, and node connections.
+- Added a back button from workflow view to the project view.
+- Added workflow undo with a toolbar button and Command/Ctrl+Z.
+- Added rectangle deletion in the workflow canvas.
+- Added a rectangle details panel that opens from the workflow canvas.
+- Added a frontend-only workflow run demo with a trigger, Python step, AI step, statuses, and outputs.
+
 ## [0.4.0] - 2026-08-06
 
 ### Changed

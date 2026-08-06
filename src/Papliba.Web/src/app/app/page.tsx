@@ -4,26 +4,48 @@ import {
   type CSSProperties,
   type FormEvent,
   type PointerEvent as ReactPointerEvent,
-  useRef,
+  useEffect,
   useState,
 } from "react";
 
-import { CreateOrganizationDialog } from "./_components/CreateOrganizationDialog";
-import { DeleteOrganizationDialog } from "./_components/DeleteOrganizationDialog";
+import { CreateProjectDialog } from "./_components/CreateProjectDialog";
+import { CreateWorkflowDialog } from "./_components/CreateWorkflowDialog";
+import { DeleteDialog } from "./_components/DeleteDialog";
 import { GlobalSearchDialog } from "./_components/GlobalSearchDialog";
 import { Sidebar } from "./_components/Sidebar";
 import { WorkspacePanel } from "./_components/WorkspacePanel";
 import {
-  organizationNameErrorMessage,
-  organizationNamePattern,
+  projectNameErrorMessage,
+  projectNamePattern,
   themeStorageKey,
+  workflowNameErrorMessage,
+  workflowNamePattern,
 } from "./constants";
-import type { Organization, ThemeMode } from "./types";
+import type {
+  Project,
+  ThemeMode,
+  Workflow,
+  WorkflowNodeStepType,
+} from "./types";
 
-const collapsedSidebarWidth = 56;
+type ActiveItemLevel = "project" | "workflow";
+
+const collapsedSidebarWidth = 48;
 const defaultSidebarWidth = 260;
 const maximumSidebarWidth = 380;
 const minimumSidebarWidth = 220;
+const maximumWorkflowUndoSteps = 25;
+const workflowRunDelayMs = 650;
+const starterProjectName = "main";
+
+function createStarterProjects(): Project[] {
+  return [
+    {
+      name: starterProjectName,
+      workflows: [],
+    },
+  ];
+}
 
 function isThemeMode(value: string | null): value is ThemeMode {
   return value === "system" || value === "light" || value === "dark";
@@ -40,24 +62,45 @@ function applyThemeMode(themeMode: ThemeMode) {
   window.localStorage.setItem(themeStorageKey, themeMode);
 }
 
-function getVisibleOrganizations(
-  organizations: Organization[],
-  activeOrganizationName: string,
-  organizationSearch: string,
-) {
-  const searchText = organizationSearch.trim().toLowerCase();
-  return organizations
-    .filter((organization) => organization.name !== activeOrganizationName)
-    .filter((organization) => {
-      return (
-        searchText.length === 0 ||
-        organization.name.toLowerCase().includes(searchText)
-      );
-    });
+function copyWorkflow(workflow: Workflow): Workflow {
+  return {
+    ...workflow,
+    connections: workflow.connections.map((connection) => ({ ...connection })),
+    nodes: workflow.nodes.map((node) => ({ ...node })),
+  };
+}
+
+function isEditableElement(target: EventTarget | null) {
+  if (!(target instanceof HTMLElement)) {
+    return false;
+  }
+
+  return target.closest("input, textarea, select, [contenteditable='true']") !== null;
+}
+
+function wait(milliseconds: number) {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, milliseconds);
+  });
+}
+
+function getDefaultStepType(nodeCount: number): WorkflowNodeStepType {
+  return nodeCount === 0 ? "python" : "ai";
+}
+
+function getDefaultStepName(stepType: WorkflowNodeStepType) {
+  return stepType === "python" ? "Python step" : "AI step";
+}
+
+function getDemoOutput(stepType: WorkflowNodeStepType, input: string) {
+  if (stepType === "python") {
+    return "Found 5 unread emails from today.";
+  }
+
+  return `Summary: ${input} 2 items look urgent.`;
 }
 
 export default function Home() {
-  const composerInputRef = useRef<HTMLInputElement>(null);
   const [themeMode, setThemeMode] = useState<ThemeMode>(() => {
     if (typeof window === "undefined") {
       return "system";
@@ -67,29 +110,46 @@ export default function Home() {
 
     return isThemeMode(savedTheme) ? savedTheme : "system";
   });
-  const [organizations, setOrganizations] = useState<Organization[]>([]);
-  const [activeOrganizationName, setActiveOrganizationName] = useState("");
-  const [draftOrganizationName, setDraftOrganizationName] = useState("");
-  const [organizationSearch, setOrganizationSearch] = useState("");
-  const [projectName, setProjectName] = useState("");
+  const [projects, setProjects] = useState<Project[]>(createStarterProjects);
+  const [activeProjectName, setActiveProjectName] =
+    useState(starterProjectName);
+  const [activeWorkflowName, setActiveWorkflowName] = useState("");
+  const [activeItemLevel, setActiveItemLevel] =
+    useState<ActiveItemLevel>("project");
+  const [draftProjectName, setDraftProjectName] = useState("");
+  const [draftWorkflowName, setDraftWorkflowName] = useState("");
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [isOrganizationMenuOpen, setIsOrganizationMenuOpen] = useState(false);
-  const [isOrganizationDialogOpen, setIsOrganizationDialogOpen] =
-    useState(false);
-  const [deleteOrganizationName, setDeleteOrganizationName] = useState("");
-  const [deleteConfirmationText, setDeleteConfirmationText] = useState("");
-  const [organizationNameError, setOrganizationNameError] = useState("");
+  const [isProjectDialogOpen, setIsProjectDialogOpen] = useState(false);
+  const [isWorkflowDialogOpen, setIsWorkflowDialogOpen] = useState(false);
+  const [deleteProjectName, setDeleteProjectName] = useState("");
+  const [deleteProjectConfirmationText, setDeleteProjectConfirmationText] =
+    useState("");
+  const [projectNameError, setProjectNameError] = useState("");
+  const [workflowNameError, setWorkflowNameError] = useState("");
   const [isGlobalSearchOpen, setIsGlobalSearchOpen] = useState(false);
   const [globalSearchQuery, setGlobalSearchQuery] = useState("");
   const [sidebarWidth, setSidebarWidth] = useState(defaultSidebarWidth);
   const [isResizingSidebar, setIsResizingSidebar] = useState(false);
+  const [isWorkflowRunning, setIsWorkflowRunning] = useState(false);
+  const [workflowUndoStack, setWorkflowUndoStack] = useState<Workflow[]>([]);
 
-  const activeOrganization = organizations.find((organization) => {
-    return organization.name === activeOrganizationName;
+  const activeProjectNameForSelection = projects.some((project) => {
+    return project.name === activeProjectName;
+  })
+    ? activeProjectName
+    : (projects[0]?.name ?? "");
+  const activeProject = projects.find((project) => {
+    return project.name === activeProjectNameForSelection;
   });
-  const hasOrganization = activeOrganization !== undefined;
-  const activeOrganizationDetails = activeOrganization?.details ?? "";
-  const activeProjects = activeOrganization?.projects ?? [];
+  const activeWorkflow = activeProject?.workflows.find((workflow) => {
+    return workflow.name === activeWorkflowName;
+  });
+  const activeWorkspaceItem =
+    activeItemLevel === "workflow" && activeWorkflow
+      ? activeWorkflow
+      : activeProject;
+  const activeWorkspaceType =
+    activeItemLevel === "workflow" && activeWorkflow ? "workflow" : "project";
   const appShellClassName = [
     "app-shell",
     !isSidebarOpen && "sidebar-collapsed",
@@ -100,14 +160,12 @@ export default function Home() {
   const appShellStyle = {
     "--sidebar-width": `${isSidebarOpen ? sidebarWidth : collapsedSidebarWidth}px`,
   } as CSSProperties;
-  const visibleOrganizations = getVisibleOrganizations(
-    organizations,
-    activeOrganizationName,
-    organizationSearch,
-  );
-  const canDeleteOrganization =
-    deleteOrganizationName.length > 0 &&
-    deleteConfirmationText === deleteOrganizationName;
+  const hasProject = activeProject !== undefined;
+  const canDeleteProject =
+    deleteProjectName.length > 0 &&
+    deleteProjectConfirmationText === deleteProjectName;
+  const canUndoWorkflowEdit =
+    activeWorkspaceType === "workflow" && workflowUndoStack.length > 0;
 
   function changeThemeMode(nextThemeMode: ThemeMode) {
     setThemeMode(nextThemeMode);
@@ -151,16 +209,6 @@ export default function Home() {
     window.addEventListener("pointerup", stopResizingSidebar);
   }
 
-  function openOrganizationDialog() {
-    setDraftOrganizationName("");
-    setOrganizationSearch("");
-    setDeleteOrganizationName("");
-    setDeleteConfirmationText("");
-    setOrganizationNameError("");
-    setIsOrganizationMenuOpen(false);
-    setIsOrganizationDialogOpen(true);
-  }
-
   function openGlobalSearch() {
     setGlobalSearchQuery("");
     setIsGlobalSearchOpen(true);
@@ -171,113 +219,145 @@ export default function Home() {
     setGlobalSearchQuery("");
   }
 
-  function closeOrganizationDialog() {
-    setIsOrganizationDialogOpen(false);
+  function openProjectDialog() {
+    setDraftProjectName("");
+    setProjectNameError("");
+    setDeleteProjectName("");
+    setDeleteProjectConfirmationText("");
+    setIsWorkflowDialogOpen(false);
+    setIsProjectDialogOpen(true);
   }
 
-  function updateDraftOrganizationName(organizationName: string) {
-    setDraftOrganizationName(organizationName.toLowerCase());
-    setOrganizationNameError("");
+  function closeProjectDialog() {
+    setIsProjectDialogOpen(false);
   }
 
-  function toggleOrganizationMenu() {
-    setOrganizationSearch("");
-    setIsOrganizationMenuOpen((currentIsOrganizationMenuOpen) => {
-      return !currentIsOrganizationMenuOpen;
-    });
-  }
-
-  function closeOrganizationMenu() {
-    setIsOrganizationMenuOpen(false);
-    setOrganizationSearch("");
-  }
-
-  function openSidebarOrToggleOrganizationMenu() {
-    if (!isSidebarOpen) {
-      openSidebar();
+  function openWorkflowDialog() {
+    if (!activeProject) {
       return;
     }
 
-    toggleOrganizationMenu();
+    setDraftWorkflowName("");
+    setWorkflowNameError("");
+    setIsProjectDialogOpen(false);
+    setIsWorkflowDialogOpen(true);
   }
 
-  function selectOrganization(organizationName: string) {
-    setActiveOrganizationName(organizationName);
-    setIsOrganizationMenuOpen(false);
-    setOrganizationSearch("");
-    setProjectName("");
+  function closeWorkflowDialog() {
+    setIsWorkflowDialogOpen(false);
   }
 
-  function openDeleteOrganizationDialog(organizationName: string) {
-    setDeleteOrganizationName(organizationName);
-    setDeleteConfirmationText("");
-    setIsOrganizationMenuOpen(false);
+  function updateDraftProjectName(projectName: string) {
+    setDraftProjectName(projectName.toLowerCase());
+    setProjectNameError("");
   }
 
-  function closeDeleteOrganizationDialog() {
-    setDeleteOrganizationName("");
-    setDeleteConfirmationText("");
+  function updateDraftWorkflowName(workflowName: string) {
+    setDraftWorkflowName(workflowName.toLowerCase());
+    setWorkflowNameError("");
   }
 
-  function createOrganizationFromInput() {
-    const nextOrganizationName = draftOrganizationName.trim();
+  function selectProject(projectName: string) {
+    setActiveProjectName(projectName);
+    setActiveWorkflowName("");
+    setActiveItemLevel("project");
+    setDraftWorkflowName("");
+    setWorkflowNameError("");
+    setIsWorkflowRunning(false);
+    setWorkflowUndoStack([]);
+  }
 
-    if (!organizationNamePattern.test(nextOrganizationName)) {
-      setOrganizationNameError(organizationNameErrorMessage);
-      return;
+  function selectWorkflow(workflowName: string) {
+    setActiveWorkflowName(workflowName);
+    setActiveItemLevel("workflow");
+    setIsWorkflowRunning(false);
+    setWorkflowUndoStack([]);
+  }
+
+  function backToProject() {
+    setActiveWorkflowName("");
+    setActiveItemLevel("project");
+    setIsWorkflowRunning(false);
+    setWorkflowUndoStack([]);
+  }
+
+  function renameProject(projectName: string, nextName: string) {
+    if (projectName === nextName) {
+      return "";
     }
 
-    if (organizations.some((org) => org.name === nextOrganizationName)) {
-      setOrganizationNameError("An organization with this name already exists.");
-      return;
+    if (!projectNamePattern.test(nextName)) {
+      return projectNameErrorMessage;
     }
 
-    setOrganizations((currentOrganizations) => [
-      ...currentOrganizations,
-      {
-        details: `# ${nextOrganizationName}`,
-        name: nextOrganizationName,
-        projects: [],
-      },
-    ]);
-    setActiveOrganizationName(nextOrganizationName);
-    setDraftOrganizationName("");
-    setOrganizationNameError("");
-    setIsOrganizationDialogOpen(false);
-    setIsOrganizationMenuOpen(false);
-    setOrganizationSearch("");
+    if (
+      projects.some((project) => {
+        return project.name === nextName;
+      })
+    ) {
+      return "A project with this name already exists.";
+    }
+
+    setProjects((currentProjects) =>
+      currentProjects.map((project) => {
+        if (project.name !== projectName) {
+          return project;
+        }
+
+        return { ...project, name: nextName };
+      }),
+    );
+
+    if (activeProjectNameForSelection === projectName) {
+      setActiveProjectName(nextName);
+    }
+
+    return "";
   }
 
-  function createOrganization(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    createOrganizationFromInput();
+  function openDeleteProjectDialog(projectName: string) {
+    setDeleteProjectName(projectName);
+    setDeleteProjectConfirmationText("");
+    setIsWorkflowDialogOpen(false);
+  }
+
+  function closeDeleteProjectDialog() {
+    setDeleteProjectName("");
+    setDeleteProjectConfirmationText("");
   }
 
   function createProjectFromInput() {
-    const nextProjectName = projectName.trim();
+    const nextProjectName = draftProjectName.trim();
 
-    if (!nextProjectName) {
-      composerInputRef.current?.focus();
+    if (!projectNamePattern.test(nextProjectName)) {
+      setProjectNameError(projectNameErrorMessage);
       return;
     }
 
-    if (!activeOrganizationName) {
+    if (
+      projects.some((project) => {
+        return project.name === nextProjectName;
+      })
+    ) {
+      setProjectNameError("A project with this name already exists.");
       return;
     }
 
-    setOrganizations((currentOrganizations) =>
-      currentOrganizations.map((organization) => {
-        if (organization.name !== activeOrganizationName) {
-          return organization;
-        }
-
-        return {
-          ...organization,
-          projects: [...organization.projects, nextProjectName],
-        };
-      }),
-    );
-    setProjectName("");
+    setProjects((currentProjects) => [
+      ...currentProjects,
+      {
+        name: nextProjectName,
+        workflows: [],
+      },
+    ]);
+    setDraftProjectName("");
+    setProjectNameError("");
+    setActiveProjectName(nextProjectName);
+    setActiveWorkflowName("");
+    setActiveItemLevel("project");
+    setIsWorkflowRunning(false);
+    setWorkflowUndoStack([]);
+    setIsProjectDialogOpen(false);
   }
 
   function createProject(event: FormEvent<HTMLFormElement>) {
@@ -285,48 +365,367 @@ export default function Home() {
     createProjectFromInput();
   }
 
-  function updateOrganizationDetails(nextDetails: string) {
-    if (!activeOrganizationName) {
+  function createWorkflowFromInput() {
+    const nextWorkflowName = draftWorkflowName.trim();
+
+    if (!workflowNamePattern.test(nextWorkflowName)) {
+      setWorkflowNameError(workflowNameErrorMessage);
       return;
     }
 
-    setOrganizations((currentOrganizations) =>
-      currentOrganizations.map((organization) => {
-        if (organization.name !== activeOrganizationName) {
-          return organization;
+    if (!activeProject) {
+      return;
+    }
+
+    if (
+      activeProject.workflows.some((workflow) => {
+        return workflow.name === nextWorkflowName;
+      })
+    ) {
+      setWorkflowNameError("A workflow with this name already exists.");
+      return;
+    }
+
+    setProjects((currentProjects) =>
+      currentProjects.map((project) => {
+        if (project.name !== activeProject.name) {
+          return project;
         }
 
-        return { ...organization, details: nextDetails };
+        return {
+          ...project,
+          workflows: [
+            ...project.workflows,
+            {
+              connections: [],
+              name: nextWorkflowName,
+              nodes: [],
+            },
+          ],
+        };
+      }),
+    );
+    setDraftWorkflowName("");
+    setWorkflowNameError("");
+    setActiveWorkflowName(nextWorkflowName);
+    setActiveItemLevel("workflow");
+    setIsWorkflowRunning(false);
+    setWorkflowUndoStack([]);
+    setIsWorkflowDialogOpen(false);
+  }
+
+  function createWorkflow(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    createWorkflowFromInput();
+  }
+
+  function updateActiveWorkflow(
+    updateWorkflow: (workflow: Workflow) => Workflow,
+  ) {
+    if (!activeProject || !activeWorkflow) {
+      return;
+    }
+
+    setProjects((currentProjects) =>
+      currentProjects.map((project) => {
+        if (project.name !== activeProject.name) {
+          return project;
+        }
+
+        return {
+          ...project,
+          workflows: project.workflows.map((workflow) => {
+            if (workflow.name !== activeWorkflow.name) {
+              return workflow;
+            }
+
+            return updateWorkflow(workflow);
+          }),
+        };
       }),
     );
   }
 
-  function deleteOrganization(organizationName: string) {
-    const remainingOrganizations = organizations.filter((organization) => {
-      return organization.name !== organizationName;
-    });
-
-    setOrganizations(remainingOrganizations);
-    setDeleteOrganizationName("");
-    setDeleteConfirmationText("");
-    setIsOrganizationMenuOpen(false);
-    setOrganizationSearch("");
-    setProjectName("");
-
-    if (organizationName === activeOrganizationName) {
-      setActiveOrganizationName(remainingOrganizations[0]?.name ?? "");
-    }
-  }
-
-  function confirmDeleteOrganization(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
-    if (!canDeleteOrganization) {
+  function saveWorkflowUndoStep() {
+    if (!activeWorkflow) {
       return;
     }
 
-    deleteOrganization(deleteOrganizationName);
+    setWorkflowUndoStack((currentUndoStack) => [
+      ...currentUndoStack.slice(-(maximumWorkflowUndoSteps - 1)),
+      copyWorkflow(activeWorkflow),
+    ]);
   }
+
+  function undoWorkflowEdit() {
+    const previousWorkflow = workflowUndoStack.at(-1);
+
+    if (!activeProject || !activeWorkflow || !previousWorkflow) {
+      return;
+    }
+
+    setProjects((currentProjects) =>
+      currentProjects.map((project) => {
+        if (project.name !== activeProject.name) {
+          return project;
+        }
+
+        return {
+          ...project,
+          workflows: project.workflows.map((workflow) => {
+            if (workflow.name !== activeWorkflow.name) {
+              return workflow;
+            }
+
+            return copyWorkflow(previousWorkflow);
+          }),
+        };
+      }),
+    );
+    setWorkflowUndoStack((currentUndoStack) => currentUndoStack.slice(0, -1));
+  }
+
+  function addWorkflowNode(position?: { x: number; y: number }) {
+    if (!activeWorkflow) {
+      return;
+    }
+
+    saveWorkflowUndoStep();
+
+    const nodeCount = activeWorkflow.nodes.length;
+    const stepType = getDefaultStepType(nodeCount);
+    const nextNode = {
+      id: `rectangle-${Date.now()}-${nodeCount + 1}`,
+      kind: "rectangle" as const,
+      name: getDefaultStepName(stepType),
+      status: "idle" as const,
+      stepType,
+      x: Math.max(24, position?.x ?? 230 + nodeCount * 190),
+      y: Math.max(24, position?.y ?? 120),
+    };
+
+    updateActiveWorkflow((workflow) => ({
+      ...workflow,
+      nodes: [...workflow.nodes, nextNode],
+    }));
+  }
+
+  function startWorkflowNodeMove() {
+    saveWorkflowUndoStep();
+  }
+
+  function moveWorkflowNode(nodeId: string, x: number, y: number) {
+    updateActiveWorkflow((workflow) => ({
+      ...workflow,
+      nodes: workflow.nodes.map((node) => {
+        if (node.id !== nodeId) {
+          return node;
+        }
+
+        return { ...node, x, y };
+      }),
+    }));
+  }
+
+  function updateWorkflowNode(
+    nodeId: string,
+    updateNode: {
+      name?: string;
+      stepType?: WorkflowNodeStepType;
+    },
+  ) {
+    saveWorkflowUndoStep();
+
+    updateActiveWorkflow((workflow) => ({
+      ...workflow,
+      nodes: workflow.nodes.map((node) => {
+        if (node.id !== nodeId) {
+          return node;
+        }
+
+        return {
+          ...node,
+          ...updateNode,
+          input: undefined,
+          output: undefined,
+          status: "idle",
+        };
+      }),
+    }));
+  }
+
+  function deleteWorkflowNode(nodeId: string) {
+    if (!activeWorkflow) {
+      return;
+    }
+
+    const nodeExists = activeWorkflow.nodes.some((node) => {
+      return node.id === nodeId;
+    });
+
+    if (!nodeExists) {
+      return;
+    }
+
+    saveWorkflowUndoStep();
+
+    updateActiveWorkflow((workflow) => ({
+      ...workflow,
+      connections: workflow.connections.filter((connection) => {
+        return (
+          connection.fromNodeId !== nodeId && connection.toNodeId !== nodeId
+        );
+      }),
+      nodes: workflow.nodes.filter((node) => {
+        return node.id !== nodeId;
+      }),
+    }));
+  }
+
+  async function runWorkflowDemo() {
+    if (!activeWorkflow || activeWorkflow.nodes.length === 0 || isWorkflowRunning) {
+      return;
+    }
+
+    setIsWorkflowRunning(true);
+    setWorkflowUndoStack([]);
+
+    const orderedNodes = [...activeWorkflow.nodes].sort((firstNode, secondNode) => {
+      return firstNode.x - secondNode.x;
+    });
+    let previousOutput = "Manual trigger started the workflow.";
+
+    updateActiveWorkflow((workflow) => ({
+      ...workflow,
+      nodes: workflow.nodes.map((node) => ({
+        ...node,
+        input: undefined,
+        output: undefined,
+        status: "idle",
+      })),
+    }));
+
+    for (const node of orderedNodes) {
+      updateActiveWorkflow((workflow) => ({
+        ...workflow,
+        nodes: workflow.nodes.map((currentNode) => {
+          if (currentNode.id !== node.id) {
+            return currentNode;
+          }
+
+          return {
+            ...currentNode,
+            input: previousOutput,
+            output: undefined,
+            status: "running",
+          };
+        }),
+      }));
+
+      await wait(workflowRunDelayMs);
+
+      const nextOutput = getDemoOutput(node.stepType, previousOutput);
+
+      updateActiveWorkflow((workflow) => ({
+        ...workflow,
+        nodes: workflow.nodes.map((currentNode) => {
+          if (currentNode.id !== node.id) {
+            return currentNode;
+          }
+
+          return {
+            ...currentNode,
+            output: nextOutput,
+            status: "done",
+          };
+        }),
+      }));
+
+      previousOutput = nextOutput;
+    }
+
+    setIsWorkflowRunning(false);
+  }
+
+  function connectWorkflowNodes(fromNodeId: string, toNodeId: string) {
+    if (!activeWorkflow || fromNodeId === toNodeId) {
+      return;
+    }
+
+    const alreadyConnected = activeWorkflow.connections.some((connection) => {
+      return (
+        connection.fromNodeId === fromNodeId &&
+        connection.toNodeId === toNodeId
+      );
+    });
+
+    if (alreadyConnected) {
+      return;
+    }
+
+    saveWorkflowUndoStep();
+
+    updateActiveWorkflow((workflow) => {
+      return {
+        ...workflow,
+        connections: [...workflow.connections, { fromNodeId, toNodeId }],
+      };
+    });
+  }
+
+  function deleteProject(projectName: string) {
+    const remainingProjects = projects.filter((project) => {
+      return project.name !== projectName;
+    });
+
+    setProjects(remainingProjects);
+    setDeleteProjectName("");
+    setDeleteProjectConfirmationText("");
+    setIsWorkflowDialogOpen(false);
+
+    if (projectName === activeProjectNameForSelection) {
+      setActiveProjectName(remainingProjects[0]?.name ?? "");
+      setActiveWorkflowName("");
+      setActiveItemLevel("project");
+      setWorkflowUndoStack([]);
+    }
+  }
+
+  function confirmDeleteProject(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!canDeleteProject) {
+      return;
+    }
+
+    deleteProject(deleteProjectName);
+  }
+
+  useEffect(() => {
+    function undoWithKeyboard(event: KeyboardEvent) {
+      const isUndoShortcut =
+        event.key.toLowerCase() === "z" &&
+        (event.metaKey || event.ctrlKey) &&
+        !event.altKey &&
+        !event.shiftKey;
+
+      if (
+        !isUndoShortcut ||
+        !canUndoWorkflowEdit ||
+        activeWorkspaceType !== "workflow" ||
+        isEditableElement(event.target)
+      ) {
+        return;
+      }
+
+      event.preventDefault();
+      undoWorkflowEdit();
+    }
+
+    window.addEventListener("keydown", undoWithKeyboard);
+
+    return () => window.removeEventListener("keydown", undoWithKeyboard);
+  });
 
   return (
     <main className="shell">
@@ -336,70 +735,82 @@ export default function Home() {
         style={appShellStyle}
       >
         <Sidebar
-          activeOrganization={activeOrganization}
-          activeProjects={activeProjects}
-          isOrganizationMenuOpen={isOrganizationMenuOpen}
+          activeProjectName={activeProjectNameForSelection}
           isSidebarOpen={isSidebarOpen}
-          onCloseOrganizationMenu={closeOrganizationMenu}
-          onCreateOrganization={openOrganizationDialog}
-          onCreateProject={createProjectFromInput}
+          onCreateProject={openProjectDialog}
+          onOpenDeleteProjectDialog={openDeleteProjectDialog}
           onOpenGlobalSearch={openGlobalSearch}
-          onOpenDeleteOrganizationDialog={openDeleteOrganizationDialog}
           onOpenSidebar={openSidebar}
-          onOrganizationSearchChange={setOrganizationSearch}
           onResizeSidebar={resizeSidebar}
-          onSelectOrganization={selectOrganization}
+          onRenameProject={renameProject}
+          onSelectProject={selectProject}
           onThemeChange={changeThemeMode}
-          onToggleOrganizationMenu={openSidebarOrToggleOrganizationMenu}
           onToggleSidebar={toggleSidebar}
-          organizationSearch={organizationSearch}
-          organizations={organizations}
+          projects={projects}
           themeMode={themeMode}
-          visibleOrganizations={visibleOrganizations}
         />
 
         <WorkspacePanel
-          activeOrganizationDetails={activeOrganizationDetails}
-          activeOrganizationName={activeOrganizationName}
-          activeProjects={activeProjects}
-          hasOrganization={hasOrganization}
-          onProjectNameChange={setProjectName}
-          onProjectSubmit={createProject}
-          onUpdateOrganizationDetails={updateOrganizationDetails}
-          projectInputRef={composerInputRef}
-          projectName={projectName}
+          activeItem={activeWorkspaceItem}
+          activeItemType={activeWorkspaceType}
+          canUndoWorkflowEdit={canUndoWorkflowEdit}
+          hasProject={hasProject}
+          isWorkflowRunning={isWorkflowRunning}
+          onAddWorkflowNode={addWorkflowNode}
+          onBackToProject={backToProject}
+          onConnectWorkflowNodes={connectWorkflowNodes}
+          onCreateWorkflow={openWorkflowDialog}
+          onDeleteWorkflowNode={deleteWorkflowNode}
+          onMoveWorkflowNode={moveWorkflowNode}
+          onRunWorkflowDemo={runWorkflowDemo}
+          onSelectWorkflow={selectWorkflow}
+          onStartWorkflowNodeMove={startWorkflowNodeMove}
+          onUndoWorkflowEdit={undoWorkflowEdit}
+          onUpdateWorkflowNode={updateWorkflowNode}
         />
       </section>
 
-      {isOrganizationDialogOpen && (
-        <CreateOrganizationDialog
-          draftOrganizationName={draftOrganizationName}
-          error={organizationNameError}
-          onCancel={closeOrganizationDialog}
-          onNameChange={updateDraftOrganizationName}
-          onSubmit={createOrganization}
+      {isProjectDialogOpen && (
+        <CreateProjectDialog
+          draftProjectName={draftProjectName}
+          error={projectNameError}
+          onCancel={closeProjectDialog}
+          onNameChange={updateDraftProjectName}
+          onSubmit={createProject}
         />
       )}
 
-      {deleteOrganizationName && (
-        <DeleteOrganizationDialog
-          canDeleteOrganization={canDeleteOrganization}
-          confirmationText={deleteConfirmationText}
-          organizationName={deleteOrganizationName}
-          onCancel={closeDeleteOrganizationDialog}
-          onConfirmationChange={setDeleteConfirmationText}
-          onSubmit={confirmDeleteOrganization}
+      {isWorkflowDialogOpen && (
+        <CreateWorkflowDialog
+          draftWorkflowName={draftWorkflowName}
+          error={workflowNameError}
+          onCancel={closeWorkflowDialog}
+          onNameChange={updateDraftWorkflowName}
+          onSubmit={createWorkflow}
+        />
+      )}
+
+      {deleteProjectName && (
+        <DeleteDialog
+          canDelete={canDeleteProject}
+          confirmationText={deleteProjectConfirmationText}
+          description={`This will delete ${deleteProjectName} and its workflows.`}
+          itemName={deleteProjectName}
+          label="project"
+          onCancel={closeDeleteProjectDialog}
+          onConfirmationChange={setDeleteProjectConfirmationText}
+          onSubmit={confirmDeleteProject}
         />
       )}
 
       {isGlobalSearchOpen && (
         <GlobalSearchDialog
-          activeOrganizationName={activeOrganizationName}
+          activeProjectName={activeProjectNameForSelection}
           onClose={closeGlobalSearch}
-          onCreateOrganization={openOrganizationDialog}
+          onCreateProject={openProjectDialog}
           onQueryChange={setGlobalSearchQuery}
-          onSelectOrganization={selectOrganization}
-          organizations={organizations}
+          onSelectProject={selectProject}
+          projects={projects}
           query={globalSearchQuery}
         />
       )}

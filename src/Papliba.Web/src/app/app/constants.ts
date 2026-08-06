@@ -11,7 +11,11 @@ export const themeOptions: { label: string; value: ThemeMode }[] = [
 export const userName = "Sunny Bharne";
 export const userInitials = "SB";
 
-export const organizationNameHelp =
+export const projectNameHelp =
   "Use 3-30 lowercase letters, numbers, or hyphens. No spaces.";
-export const organizationNameErrorMessage = "Enter a valid organization name.";
-export const organizationNamePattern = /^[a-z0-9][a-z0-9-]{1,28}[a-z0-9]$/;
+export const projectNameErrorMessage = "Enter a valid project name.";
+export const projectNamePattern = /^[a-z0-9][a-z0-9-]{1,28}[a-z0-9]$/;
+
+export const workflowNameHelp = projectNameHelp;
+export const workflowNameErrorMessage = "Enter a valid workflow name.";
+export const workflowNamePattern = projectNamePattern;

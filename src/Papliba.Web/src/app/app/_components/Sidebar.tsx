@@ -3,76 +3,132 @@
 import {
   useEffect,
   useRef,
+  useState,
+  type KeyboardEvent,
   type PointerEvent as ReactPointerEvent,
+  type RefObject,
 } from "react";
 
-import type { Organization, ThemeMode } from "../types";
+import type { Project, ThemeMode } from "../types";
 import { UserMenu } from "./UserMenu";
 
 type SidebarProps = {
-  activeOrganization: Organization | undefined;
-  activeProjects: string[];
-  isOrganizationMenuOpen: boolean;
+  activeProjectName: string;
   isSidebarOpen: boolean;
-  onCreateOrganization: () => void;
   onCreateProject: () => void;
-  onCloseOrganizationMenu: () => void;
+  onOpenDeleteProjectDialog: (projectName: string) => void;
   onOpenGlobalSearch: () => void;
-  onOpenDeleteOrganizationDialog: (organizationName: string) => void;
   onOpenSidebar: () => void;
-  onOrganizationSearchChange: (value: string) => void;
   onResizeSidebar: (event: ReactPointerEvent<HTMLDivElement>) => void;
-  onSelectOrganization: (organizationName: string) => void;
+  onRenameProject: (projectName: string, nextName: string) => string;
+  onSelectProject: (projectName: string) => void;
   onThemeChange: (themeMode: ThemeMode) => void;
-  onToggleOrganizationMenu: () => void;
   onToggleSidebar: () => void;
-  organizationSearch: string;
-  organizations: Organization[];
+  projects: Project[];
   themeMode: ThemeMode;
-  visibleOrganizations: Organization[];
 };
 
 export function Sidebar({
-  activeOrganization,
-  activeProjects,
-  isOrganizationMenuOpen,
+  activeProjectName,
   isSidebarOpen,
-  onCreateOrganization,
   onCreateProject,
-  onCloseOrganizationMenu,
+  onOpenDeleteProjectDialog,
   onOpenGlobalSearch,
-  onOpenDeleteOrganizationDialog,
   onOpenSidebar,
-  onOrganizationSearchChange,
   onResizeSidebar,
-  onSelectOrganization,
+  onRenameProject,
+  onSelectProject,
   onThemeChange,
-  onToggleOrganizationMenu,
   onToggleSidebar,
-  organizationSearch,
-  organizations,
+  projects,
   themeMode,
-  visibleOrganizations,
 }: SidebarProps) {
-  const organizationSelectRef = useRef<HTMLDivElement>(null);
+  const renameInputRef = useRef<HTMLInputElement>(null);
+  const [renameProjectName, setRenameProjectName] = useState("");
+  const [renameDraft, setRenameDraft] = useState("");
+  const [renameError, setRenameError] = useState("");
 
   useEffect(() => {
-    if (!isOrganizationMenuOpen) {
+    if (!renameProjectName) {
       return;
     }
 
-    function closeWhenClickingAway(event: PointerEvent) {
-      if (!organizationSelectRef.current?.contains(event.target as Node)) {
-        onCloseOrganizationMenu();
-      }
+    renameInputRef.current?.focus();
+    renameInputRef.current?.select();
+  }, [renameProjectName]);
+
+  function startRename(projectName: string) {
+    if (!isSidebarOpen) {
+      onOpenSidebar();
+      return;
     }
 
-    window.addEventListener("pointerdown", closeWhenClickingAway);
+    setRenameProjectName(projectName);
+    setRenameDraft(projectName);
+    setRenameError("");
+  }
 
-    return () => {
-      window.removeEventListener("pointerdown", closeWhenClickingAway);
-    };
-  }, [isOrganizationMenuOpen, onCloseOrganizationMenu]);
+  function cancelRename() {
+    setRenameProjectName("");
+    setRenameDraft("");
+    setRenameError("");
+  }
+
+  function saveRename() {
+    if (!renameProjectName) {
+      return;
+    }
+
+    const error = onRenameProject(renameProjectName, renameDraft.trim());
+
+    if (error) {
+      setRenameError(error);
+      renameInputRef.current?.focus();
+      return;
+    }
+
+    cancelRename();
+  }
+
+  function saveRenameOnBlur() {
+    if (!renameProjectName) {
+      return;
+    }
+
+    const error = onRenameProject(renameProjectName, renameDraft.trim());
+
+    if (error) {
+      cancelRename();
+      return;
+    }
+
+    cancelRename();
+  }
+
+  function handleRenameKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      saveRename();
+    }
+
+    if (event.key === "Escape") {
+      event.preventDefault();
+      cancelRename();
+    }
+  }
+
+  function updateRenameDraft(value: string) {
+    setRenameDraft(value.toLowerCase());
+    setRenameError("");
+  }
+
+  function selectProjectFromRow(projectName: string) {
+    if (!isSidebarOpen) {
+      onOpenSidebar();
+    }
+
+    onSelectProject(projectName);
+  }
 
   return (
     <aside
@@ -105,115 +161,48 @@ export function Sidebar({
         </div>
       </div>
 
-      <section className="sidebar-section">
+      <section className="sidebar-section project-section">
         <div className="section-title">
-          <span>Organization</span>
+          <span>Projects</span>
           <button
-            aria-label="Create organization"
+            aria-label="Create project"
             className="icon-button"
-            onClick={onCreateOrganization}
+            onClick={onCreateProject}
             type="button"
           >
             +
           </button>
         </div>
 
-        <div className="organization-pill">
-          {organizations.length === 0 ? (
-            <EmptyOrganizationRow
+        <div className="sidebar-list">
+          {projects.length === 0 ? (
+            <EmptyProjectRow
               isSidebarOpen={isSidebarOpen}
               onOpenSidebar={onOpenSidebar}
             />
           ) : (
-            <div className="organization-select" ref={organizationSelectRef}>
-              {activeOrganization && (
-                <div className="organization-active-row">
-                  <button
-                    aria-expanded={isSidebarOpen && isOrganizationMenuOpen}
-                    className="organization-item organization-active"
-                    onClick={onToggleOrganizationMenu}
-                    type="button"
-                  >
-                    <SidebarItemIcon name="organization" />
-                    <span className="organization-text">
-                      <strong>{activeOrganization.name}</strong>
-                    </span>
-                    <span aria-hidden="true" className="organization-arrow" />
-                  </button>
-
-                  <DeleteOrganizationButton
-                    onRequestDelete={onOpenDeleteOrganizationDialog}
-                    organizationName={activeOrganization.name}
-                  />
-                </div>
-              )}
-
-              {isSidebarOpen && isOrganizationMenuOpen && (
-                <div className="organization-list">
-                  <input
-                    aria-label="Search organizations"
-                    className="organization-search"
-                    onChange={(event) =>
-                      onOrganizationSearchChange(event.target.value)
-                    }
-                    placeholder="Search organizations"
-                    type="search"
-                    value={organizationSearch}
-                  />
-
-                  {visibleOrganizations.length === 0 ? (
-                    <p className="muted-copy">
-                      {organizationSearch.trim()
-                        ? "No organizations found."
-                        : "No other organizations."}
-                    </p>
-                  ) : (
-                    visibleOrganizations.map((organization) => (
-                      <OrganizationMenuRow
-                        key={organization.name}
-                        onOpenDeleteDialog={onOpenDeleteOrganizationDialog}
-                        onSelect={onSelectOrganization}
-                        organization={organization}
-                      />
-                    ))
-                  )}
-                </div>
-              )}
+            <div className="project-list">
+              {projects.map((project) => (
+                <ProjectRow
+                  isActive={project.name === activeProjectName}
+                  isRenaming={renameProjectName === project.name}
+                  key={project.name}
+                  onOpenDeleteDialog={onOpenDeleteProjectDialog}
+                  onRenameStart={startRename}
+                  onSelect={selectProjectFromRow}
+                  project={project}
+                  renameError={renameError}
+                  renameInputRef={renameInputRef}
+                  renameValue={renameDraft}
+                  onRenameBlur={saveRenameOnBlur}
+                  onRenameChange={updateRenameDraft}
+                  onRenameKeyDown={handleRenameKeyDown}
+                />
+              ))}
             </div>
           )}
         </div>
       </section>
-
-      {activeOrganization && (
-        <section className="sidebar-section project-section">
-          <div className="section-title">
-            <span>Projects</span>
-            <button
-              aria-label="Create project"
-              className="icon-button"
-              onClick={onCreateProject}
-              type="button"
-            >
-              +
-            </button>
-          </div>
-
-          {activeProjects.length === 0 ? (
-            <p className="muted-copy">No projects yet.</p>
-          ) : (
-            <div className="thread-list">
-              {activeProjects.map((project) => (
-                <button className="thread-item" key={project} type="button">
-                  <SidebarItemIcon name="project" />
-                  <span>
-                    <strong>{project}</strong>
-                  </span>
-                </button>
-              ))}
-            </div>
-          )}
-        </section>
-      )}
 
       <div className="sidebar-footer">
         <UserMenu onThemeChange={onThemeChange} themeMode={themeMode} />
@@ -224,86 +213,153 @@ export function Sidebar({
   );
 }
 
-type EmptyOrganizationRowProps = {
+type RenameInputProps = {
+  error: string;
+  inputRef: RefObject<HTMLInputElement | null>;
+  onBlur: () => void;
+  onChange: (value: string) => void;
+  onKeyDown: (event: KeyboardEvent<HTMLInputElement>) => void;
+  value: string;
+};
+
+function RenameInput({
+  error,
+  inputRef,
+  onBlur,
+  onChange,
+  onKeyDown,
+  value,
+}: RenameInputProps) {
+  return (
+    <input
+      aria-invalid={error.length > 0}
+      aria-label="Rename project"
+      className="rename-input"
+      onBlur={onBlur}
+      onChange={(event) => onChange(event.target.value)}
+      onClick={(event) => event.stopPropagation()}
+      onDoubleClick={(event) => event.stopPropagation()}
+      onKeyDown={onKeyDown}
+      ref={inputRef}
+      title={error}
+      value={value}
+    />
+  );
+}
+
+type EmptyProjectRowProps = {
   isSidebarOpen: boolean;
   onOpenSidebar: () => void;
 };
 
-function EmptyOrganizationRow({
-  isSidebarOpen,
-  onOpenSidebar,
-}: EmptyOrganizationRowProps) {
+function EmptyProjectRow({ isSidebarOpen, onOpenSidebar }: EmptyProjectRowProps) {
   if (!isSidebarOpen) {
     return (
       <button
-        aria-label="Open organizations"
-        className="organization-empty"
+        aria-label="Open projects"
+        className="sidebar-empty"
         onClick={onOpenSidebar}
         type="button"
       >
-        <SidebarItemIcon name="organization" />
+        <SidebarItemIcon />
       </button>
     );
   }
 
   return (
-    <div className="organization-empty">
-      <SidebarItemIcon name="organization" />
+    <div className="sidebar-empty">
+      <SidebarItemIcon />
       <div>
-        <strong>No organization</strong>
+        <strong>No project</strong>
       </div>
     </div>
   );
 }
 
-type OrganizationMenuRowProps = {
-  onOpenDeleteDialog: (organizationName: string) => void;
-  onSelect: (organizationName: string) => void;
-  organization: Organization;
+type ProjectRowProps = {
+  isActive: boolean;
+  isRenaming: boolean;
+  onOpenDeleteDialog: (projectName: string) => void;
+  onRenameBlur: () => void;
+  onRenameChange: (projectName: string) => void;
+  onRenameKeyDown: (event: KeyboardEvent<HTMLInputElement>) => void;
+  onRenameStart: (projectName: string) => void;
+  onSelect: (projectName: string) => void;
+  project: Project;
+  renameError: string;
+  renameInputRef: RefObject<HTMLInputElement | null>;
+  renameValue: string;
 };
 
-function OrganizationMenuRow({
+function ProjectRow({
+  isActive,
+  isRenaming,
   onOpenDeleteDialog,
+  onRenameBlur,
+  onRenameChange,
+  onRenameKeyDown,
+  onRenameStart,
   onSelect,
-  organization,
-}: OrganizationMenuRowProps) {
+  project,
+  renameError,
+  renameInputRef,
+  renameValue,
+}: ProjectRowProps) {
   return (
-    <div className="organization-menu-row">
-      <button
-        aria-label={organization.name}
-        className="organization-item organization-menu-item"
-        onClick={() => onSelect(organization.name)}
-        type="button"
-      >
-        <SidebarItemIcon name="organization" />
-        <span className="organization-text">
-          <strong>{organization.name}</strong>
-        </span>
-      </button>
+    <div className="sidebar-menu-row" data-active={isActive}>
+      {isRenaming ? (
+        <div className="sidebar-item project-item rename-item">
+          <SidebarItemIcon />
+          <span className="sidebar-item-text">
+            <RenameInput
+              error={renameError}
+              inputRef={renameInputRef}
+              onBlur={onRenameBlur}
+              onChange={onRenameChange}
+              onKeyDown={onRenameKeyDown}
+              value={renameValue}
+            />
+          </span>
+        </div>
+      ) : (
+        <button
+          aria-current={isActive ? "page" : undefined}
+          aria-label={project.name}
+          className="sidebar-item project-item"
+          onClick={() => onSelect(project.name)}
+          onDoubleClick={() => onRenameStart(project.name)}
+          type="button"
+        >
+          <SidebarItemIcon />
+          <span className="sidebar-item-text">
+            <strong>{project.name}</strong>
+          </span>
+        </button>
+      )}
 
-      <DeleteOrganizationButton
+      <DeleteItemButton
+        itemName={project.name}
         onRequestDelete={onOpenDeleteDialog}
-        organizationName={organization.name}
       />
     </div>
   );
 }
 
-type DeleteOrganizationButtonProps = {
-  onRequestDelete: (organizationName: string) => void;
-  organizationName: string;
+type DeleteItemButtonProps = {
+  itemName: string;
+  onRequestDelete: (itemName: string) => void;
 };
 
-function DeleteOrganizationButton({
+function DeleteItemButton({
+  itemName,
   onRequestDelete,
-  organizationName,
-}: DeleteOrganizationButtonProps) {
+}: DeleteItemButtonProps) {
   return (
-    <div className="organization-actions">
+    <div className="sidebar-item-actions">
       <button
-        aria-label={`Delete ${organizationName}`}
-        className="organization-delete-button"
-        onClick={() => onRequestDelete(organizationName)}
+        aria-label={`Delete ${itemName}`}
+        className="sidebar-delete-button"
+        onClick={() => onRequestDelete(itemName)}
         type="button"
       >
         <TrashIcon />
@@ -316,7 +372,7 @@ function TrashIcon() {
   return (
     <svg
       aria-hidden="true"
-      className="organization-delete-icon"
+      className="sidebar-delete-icon"
       fill="none"
       viewBox="0 0 24 24"
     >
@@ -366,30 +422,17 @@ function SearchIcon() {
   );
 }
 
-type SidebarItemIconName = "organization" | "project";
-
-function SidebarItemIcon({ name }: { name: SidebarItemIconName }) {
+function SidebarItemIcon() {
   return (
     <svg
       aria-hidden="true"
-      className={`sidebar-item-icon sidebar-item-icon-${name}`}
+      className="sidebar-item-icon sidebar-item-icon-project"
       fill="none"
       viewBox="0 0 24 24"
     >
-      {name === "organization" && (
-        <>
-          <circle cx="12" cy="12" r="8" />
-          <path d="M4 12h16" />
-          <path d="M12 4a12 12 0 0 1 0 16" />
-          <path d="M12 4a12 12 0 0 0 0 16" />
-        </>
-      )}
-      {name === "project" && (
-        <>
-          <path d="M5 6h6l2 2h6v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2Z" />
-          <path d="M8 13h8" />
-        </>
-      )}
+      <rect height="14" rx="3" width="16" x="4" y="6" />
+      <path d="M9 6V4h6v2" />
+      <path d="M4 11h16" />
     </svg>
   );
 }

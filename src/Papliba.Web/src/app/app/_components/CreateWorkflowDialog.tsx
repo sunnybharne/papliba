@@ -1,46 +1,46 @@
 import type { FormEvent } from "react";
 
-import { organizationNameHelp } from "../constants";
+import { workflowNameHelp } from "../constants";
 
-type CreateOrganizationDialogProps = {
-  draftOrganizationName: string;
+type CreateWorkflowDialogProps = {
+  draftWorkflowName: string;
   error: string;
   onCancel: () => void;
-  onNameChange: (organizationName: string) => void;
+  onNameChange: (workflowName: string) => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
 };
 
-export function CreateOrganizationDialog({
-  draftOrganizationName,
+export function CreateWorkflowDialog({
+  draftWorkflowName,
   error,
   onCancel,
   onNameChange,
   onSubmit,
-}: CreateOrganizationDialogProps) {
+}: CreateWorkflowDialogProps) {
   return (
     <div className="dialog-backdrop" onClick={onCancel}>
       <section
         aria-modal="true"
-        aria-labelledby="organization-dialog-title"
+        aria-labelledby="workflow-dialog-title"
         className="dialog-panel"
         onClick={(event) => event.stopPropagation()}
         role="dialog"
       >
-        <h2 id="organization-dialog-title">Create organization</h2>
-        <p id="organization-name-help">{organizationNameHelp}</p>
+        <h2 id="workflow-dialog-title">Create workflow</h2>
+        <p id="workflow-name-help">{workflowNameHelp}</p>
 
         <form className="dialog-form" onSubmit={onSubmit}>
           <input
             autoFocus
-            aria-describedby="organization-name-help"
+            aria-describedby="workflow-name-help"
             aria-invalid={error.length > 0}
-            aria-label="Organization name"
+            aria-label="Workflow name"
             maxLength={30}
             onChange={(event) => onNameChange(event.target.value)}
-            placeholder="my-organization"
+            placeholder="daily-review"
             spellCheck="false"
             type="text"
-            value={draftOrganizationName}
+            value={draftWorkflowName}
           />
           {error && <p className="dialog-error">{error}</p>}
 

@@ -33,7 +33,7 @@ export default function DocsPage() {
       <section className="site-hero-panel">
         <h1>Learn what Papliba is and how the project is evolving.</h1>
         <p>
-          Papliba is starting as a small product: organizations, projects, and a
+          Papliba is starting as a small product: projects, workflows, and a
           local-first workspace. The long-term direction is a visual workflow
           builder that connects triggers, workers, and outputs.
         </p>

@@ -1,50 +1,51 @@
 import type { FormEvent } from "react";
 
-type DeleteOrganizationDialogProps = {
-  canDeleteOrganization: boolean;
+type DeleteDialogProps = {
+  canDelete: boolean;
   confirmationText: string;
-  organizationName: string;
+  description: string;
+  itemName: string;
+  label: string;
   onCancel: () => void;
   onConfirmationChange: (confirmationText: string) => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
 };
 
-export function DeleteOrganizationDialog({
-  canDeleteOrganization,
+export function DeleteDialog({
+  canDelete,
   confirmationText,
-  organizationName,
+  description,
+  itemName,
+  label,
   onCancel,
   onConfirmationChange,
   onSubmit,
-}: DeleteOrganizationDialogProps) {
+}: DeleteDialogProps) {
+  const inputId = `delete-${label}-confirmation`;
+  const titleId = `delete-${label}-dialog-title`;
+
   return (
     <div className="dialog-backdrop" onClick={onCancel}>
       <section
         aria-modal="true"
-        aria-labelledby="delete-organization-dialog-title"
+        aria-labelledby={titleId}
         className="dialog-panel"
         onClick={(event) => event.stopPropagation()}
         role="dialog"
       >
-        <h2 id="delete-organization-dialog-title">Delete organization</h2>
-        <p>
-          This will delete <strong>{organizationName}</strong> and its local
-          projects.
-        </p>
+        <h2 id={titleId}>Delete {label}</h2>
+        <p>{description}</p>
 
         <form className="dialog-form" onSubmit={onSubmit}>
-          <label
-            className="delete-confirmation-label"
-            htmlFor="delete-organization-confirmation"
-          >
-            Type <strong>{organizationName}</strong> to confirm.
+          <label className="delete-confirmation-label" htmlFor={inputId}>
+            Type <strong>{itemName}</strong> to confirm.
           </label>
           <input
             autoFocus
-            aria-label="Organization name confirmation"
-            id="delete-organization-confirmation"
+            aria-label={`${label} name confirmation`}
+            id={inputId}
             onChange={(event) => onConfirmationChange(event.target.value)}
-            placeholder={organizationName}
+            placeholder={itemName}
             spellCheck="false"
             type="text"
             value={confirmationText}
@@ -54,11 +55,7 @@ export function DeleteOrganizationDialog({
             <button className="ghost-button" onClick={onCancel} type="button">
               Cancel
             </button>
-            <button
-              className="danger-button"
-              disabled={!canDeleteOrganization}
-              type="submit"
-            >
+            <button className="danger-button" disabled={!canDelete} type="submit">
               Delete
             </button>
           </div>

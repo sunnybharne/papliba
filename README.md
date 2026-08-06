@@ -22,9 +22,9 @@ This repository currently contains the project foundation and the first tiny fro
 - open-source license
 - contribution and security docs
 - Husky and commitlint setup
-- first Next.js organization and projects screen
+- first Next.js projects and workflows screen
 
-The first implementation is intentionally small: a Next.js screen with one organization and a simple way to add projects inside it.
+The first implementation is intentionally small: a Next.js screen with one starter project and a simple way to add workflows inside it.
 
 The web frontend uses Next.js + React + TypeScript.
 

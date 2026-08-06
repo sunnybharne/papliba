@@ -2,45 +2,42 @@
 
 import type { KeyboardEvent, ReactNode } from "react";
 
-import type { Organization } from "../types";
+import type { Project } from "../types";
 
 type GlobalSearchDialogProps = {
-  activeOrganizationName: string;
+  activeProjectName: string;
   onClose: () => void;
-  onCreateOrganization: () => void;
+  onCreateProject: () => void;
   onQueryChange: (query: string) => void;
-  onSelectOrganization: (organizationName: string) => void;
-  organizations: Organization[];
+  onSelectProject: (projectName: string) => void;
+  projects: Project[];
   query: string;
 };
 
 type SearchAction = {
-  icon: "folder" | "search" | "settings" | "write";
+  icon: "folder" | "write";
   label: string;
   shortcut: string;
 };
 
 const searchActions: SearchAction[] = [
-  { icon: "write", label: "Create organization", shortcut: "⌘N" },
-  { icon: "folder", label: "Open project", shortcut: "⌘O" },
-  { icon: "search", label: "Search files", shortcut: "⌘P" },
-  { icon: "settings", label: "General", shortcut: "⌘," },
+  { icon: "write", label: "Create project", shortcut: "⌘N" },
 ];
 
 export function GlobalSearchDialog({
-  activeOrganizationName,
+  activeProjectName,
   onClose,
-  onCreateOrganization,
+  onCreateProject,
   onQueryChange,
-  onSelectOrganization,
-  organizations,
+  onSelectProject,
+  projects,
   query,
 }: GlobalSearchDialogProps) {
   const searchText = query.trim().toLowerCase();
-  const visibleOrganizations = organizations.filter((organization) => {
+  const visibleProjects = projects.filter((project) => {
     return (
       searchText.length === 0 ||
-      organization.name.toLowerCase().includes(searchText)
+      project.name.toLowerCase().includes(searchText)
     );
   });
   const visibleActions = searchActions.filter((action) => {
@@ -49,7 +46,7 @@ export function GlobalSearchDialog({
       action.label.toLowerCase().includes(searchText)
     );
   });
-  const hasOrganizationResults = visibleOrganizations.length > 0;
+  const hasProjectResults = visibleProjects.length > 0;
 
   function closeOnEscape(event: KeyboardEvent<HTMLDivElement>) {
     if (event.key === "Escape") {
@@ -57,13 +54,13 @@ export function GlobalSearchDialog({
     }
   }
 
-  function createOrganization() {
+  function createProject() {
     onClose();
-    onCreateOrganization();
+    onCreateProject();
   }
 
-  function selectOrganization(organizationName: string) {
-    onSelectOrganization(organizationName);
+  function selectProject(projectName: string) {
+    onSelectProject(projectName);
     onClose();
   }
 
@@ -93,47 +90,45 @@ export function GlobalSearchDialog({
           value={query}
         />
 
-        {visibleOrganizations.length > 0 && (
-          <SearchGroup title="Organizations">
-            {visibleOrganizations.map((organization, index) => (
+        {visibleProjects.length > 0 && (
+          <SearchGroup title="Projects">
+            {visibleProjects.map((project, index) => (
               <button
                 className="search-row"
                 data-active={index === 0}
-                key={organization.name}
-                onClick={() => selectOrganization(organization.name)}
+                key={project.name}
+                onClick={() => selectProject(project.name)}
                 type="button"
               >
                 <SearchIcon name="folder" />
-                <span>{organization.name}</span>
+                <span>{project.name}</span>
                 <small>
-                  {organization.name === activeOrganizationName
-                    ? "current"
-                    : "organization"}
+                  {project.name === activeProjectName ? "current" : "project"}
                 </small>
               </button>
             ))}
           </SearchGroup>
         )}
 
-        <SearchGroup title="Suggested">
-          {visibleActions.map((action, index) => (
-            <button
-              className="search-row"
-              data-active={!hasOrganizationResults && index === 0}
-              key={action.label}
-              onClick={
-                action.label === "Create organization"
-                  ? createOrganization
-                  : onClose
-              }
-              type="button"
-            >
-              <SearchIcon name={action.icon} />
-              <span>{action.label}</span>
-              <kbd>{action.shortcut}</kbd>
-            </button>
-          ))}
-        </SearchGroup>
+        {visibleActions.length > 0 && (
+          <SearchGroup title="Suggested">
+            {visibleActions.map((action, index) => (
+              <button
+                className="search-row"
+                data-active={!hasProjectResults && index === 0}
+                key={action.label}
+                onClick={
+                  action.label === "Create project" ? createProject : onClose
+                }
+                type="button"
+              >
+                <SearchIcon name={action.icon} />
+                <span>{action.label}</span>
+                <kbd>{action.shortcut}</kbd>
+              </button>
+            ))}
+          </SearchGroup>
+        )}
       </section>
     </div>
   );
@@ -169,18 +164,6 @@ function SearchIcon({ name }: { name: SearchAction["icon"] }) {
       )}
       {name === "folder" && (
         <path d="M4 7h6l2 2h8v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2Z" />
-      )}
-      {name === "search" && (
-        <>
-          <circle cx="11" cy="11" r="7" />
-          <path d="m16 16 4 4" />
-        </>
-      )}
-      {name === "settings" && (
-        <>
-          <circle cx="12" cy="12" r="3" />
-          <path d="M12 3v3M12 18v3M4.2 7.5l2.6 1.5M17.2 15l2.6 1.5M19.8 7.5 17.2 9M6.8 15l-2.6 1.5" />
-        </>
       )}
     </svg>
   );

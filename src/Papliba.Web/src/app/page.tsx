@@ -3,7 +3,7 @@ import Link from "next/link";
 const productHighlights = [
   {
     title: "Organize work first",
-    text: "Start with organizations and projects so every workflow has a clear place to live.",
+    text: "Start with a project so every workflow has a clear place to live.",
   },
   {
     title: "Build small steps",
@@ -43,8 +43,8 @@ export default function Home() {
           <h1>Turn repeatable work into connected workflows.</h1>
           <p>
             Papliba is a visual workflow product where triggers, workers, and
-            outputs can be connected together. It starts simple with
-            organizations and projects, then grows toward reusable automation.
+            outputs can be connected together. It starts simple with projects
+            and workflows, then grows toward reusable automation.
           </p>
 
           <div className="marketing-actions">
@@ -61,12 +61,12 @@ export default function Home() {
           <div className="preview-sidebar">
             <div className="preview-brand">Papliba</div>
             <div className="preview-search">Search</div>
-            <div className="preview-section-label">Organization</div>
+            <div className="preview-section-label">Project</div>
             <div className="preview-org-row">
               <span>P</span>
-              <strong>papliba-labs</strong>
+              <strong>main</strong>
             </div>
-            <div className="preview-project">customer-workflows</div>
+            <div className="preview-project">customer-onboarding</div>
             <div className="preview-project">content-automation</div>
           </div>
 
