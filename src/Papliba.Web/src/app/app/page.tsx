@@ -5,8 +5,17 @@ import {
   type FormEvent,
   type PointerEvent as ReactPointerEvent,
   useEffect,
+  useRef,
   useState,
 } from "react";
+
+import {
+  createDurableWorkspace,
+  loadWorkspace,
+  openPythonScriptInVsCode,
+  saveWorkspace,
+  trashPythonScriptFile,
+} from "@/lib/papliba-api";
 
 import { CreateProjectDialog } from "./_components/CreateProjectDialog";
 import { CreateWorkflowDialog } from "./_components/CreateWorkflowDialog";
@@ -15,6 +24,7 @@ import { GlobalSearchDialog } from "./_components/GlobalSearchDialog";
 import { Sidebar } from "./_components/Sidebar";
 import { WorkspacePanel } from "./_components/WorkspacePanel";
 import {
+  defaultWorkflowTriggerPosition,
   projectNameErrorMessage,
   projectNamePattern,
   themeStorageKey,
@@ -22,13 +32,14 @@ import {
   workflowNamePattern,
 } from "./constants";
 import type {
+  ActiveItemLevel,
   Project,
   ThemeMode,
   Workflow,
   WorkflowNodeStepType,
+  WorkspaceSaveStatus,
+  WorkspaceSnapshot,
 } from "./types";
-
-type ActiveItemLevel = "project" | "workflow";
 
 const collapsedSidebarWidth = 48;
 const defaultSidebarWidth = 260;
@@ -67,6 +78,7 @@ function copyWorkflow(workflow: Workflow): Workflow {
     ...workflow,
     connections: workflow.connections.map((connection) => ({ ...connection })),
     nodes: workflow.nodes.map((node) => ({ ...node })),
+    trigger: workflow.trigger ? { ...workflow.trigger } : workflow.trigger,
   };
 }
 
@@ -89,7 +101,7 @@ function getDefaultStepType(nodeCount: number): WorkflowNodeStepType {
 }
 
 function getDefaultStepName(stepType: WorkflowNodeStepType) {
-  return stepType === "python" ? "Python step" : "AI step";
+  return stepType === "python" ? "Python script" : "AI step";
 }
 
 function getDemoOutput(stepType: WorkflowNodeStepType, input: string) {
@@ -124,6 +136,9 @@ export default function Home() {
   const [deleteProjectName, setDeleteProjectName] = useState("");
   const [deleteProjectConfirmationText, setDeleteProjectConfirmationText] =
     useState("");
+  const [deleteWorkflowName, setDeleteWorkflowName] = useState("");
+  const [deleteWorkflowConfirmationText, setDeleteWorkflowConfirmationText] =
+    useState("");
   const [projectNameError, setProjectNameError] = useState("");
   const [workflowNameError, setWorkflowNameError] = useState("");
   const [isGlobalSearchOpen, setIsGlobalSearchOpen] = useState(false);
@@ -132,6 +147,17 @@ export default function Home() {
   const [isResizingSidebar, setIsResizingSidebar] = useState(false);
   const [isWorkflowRunning, setIsWorkflowRunning] = useState(false);
   const [workflowUndoStack, setWorkflowUndoStack] = useState<Workflow[]>([]);
+  const [isWorkspaceHydrated, setIsWorkspaceHydrated] = useState(false);
+  const [workspaceSaveStatus, setWorkspaceSaveStatus] =
+    useState<WorkspaceSaveStatus>("loading");
+  const workspaceRevisionRef = useRef(0);
+  const lastSavedWorkspaceRef = useRef("");
+  const pendingWorkspaceSaveRef = useRef<{
+    serialized: string;
+    snapshot: WorkspaceSnapshot;
+  } | null>(null);
+  const isWorkspaceSaveInFlightRef = useRef(false);
+  const isAppMountedRef = useRef(true);
 
   const activeProjectNameForSelection = projects.some((project) => {
     return project.name === activeProjectName;
@@ -164,8 +190,17 @@ export default function Home() {
   const canDeleteProject =
     deleteProjectName.length > 0 &&
     deleteProjectConfirmationText === deleteProjectName;
+  const canDeleteWorkflow =
+    deleteWorkflowName.length > 0 &&
+    deleteWorkflowConfirmationText === deleteWorkflowName;
   const canUndoWorkflowEdit =
     activeWorkspaceType === "workflow" && workflowUndoStack.length > 0;
+  const durableWorkspace = createDurableWorkspace({
+    activeItemLevel,
+    activeProjectName: activeProjectNameForSelection,
+    activeWorkflowName,
+    projects,
+  });
 
   function changeThemeMode(nextThemeMode: ThemeMode) {
     setThemeMode(nextThemeMode);
@@ -326,6 +361,18 @@ export default function Home() {
     setDeleteProjectConfirmationText("");
   }
 
+  function openDeleteWorkflowDialog(workflowName: string) {
+    setDeleteWorkflowName(workflowName);
+    setDeleteWorkflowConfirmationText("");
+    setIsProjectDialogOpen(false);
+    setIsWorkflowDialogOpen(false);
+  }
+
+  function closeDeleteWorkflowDialog() {
+    setDeleteWorkflowName("");
+    setDeleteWorkflowConfirmationText("");
+  }
+
   function createProjectFromInput() {
     const nextProjectName = draftProjectName.trim();
 
@@ -400,6 +447,7 @@ export default function Home() {
               connections: [],
               name: nextWorkflowName,
               nodes: [],
+              trigger: { ...defaultWorkflowTriggerPosition },
             },
           ],
         };
@@ -417,6 +465,53 @@ export default function Home() {
   function createWorkflow(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     createWorkflowFromInput();
+  }
+
+  function renameWorkflow(workflowName: string, nextName: string) {
+    if (workflowName === nextName) {
+      return "";
+    }
+
+    if (!workflowNamePattern.test(nextName)) {
+      return workflowNameErrorMessage;
+    }
+
+    if (!activeProject) {
+      return "The project is no longer available.";
+    }
+
+    if (
+      activeProject.workflows.some((workflow) => {
+        return workflow.name === nextName;
+      })
+    ) {
+      return "A workflow with this name already exists.";
+    }
+
+    setProjects((currentProjects) =>
+      currentProjects.map((project) => {
+        if (project.name !== activeProject.name) {
+          return project;
+        }
+
+        return {
+          ...project,
+          workflows: project.workflows.map((workflow) => {
+            if (workflow.name !== workflowName) {
+              return workflow;
+            }
+
+            return { ...workflow, name: nextName };
+          }),
+        };
+      }),
+    );
+
+    if (activeWorkflowName === workflowName) {
+      setActiveWorkflowName(nextName);
+    }
+
+    return "";
   }
 
   function updateActiveWorkflow(
@@ -485,7 +580,10 @@ export default function Home() {
     setWorkflowUndoStack((currentUndoStack) => currentUndoStack.slice(0, -1));
   }
 
-  function addWorkflowNode(position?: { x: number; y: number }) {
+  function addWorkflowNode(
+    position?: { x: number; y: number },
+    requestedStepType?: WorkflowNodeStepType,
+  ) {
     if (!activeWorkflow) {
       return;
     }
@@ -493,9 +591,9 @@ export default function Home() {
     saveWorkflowUndoStep();
 
     const nodeCount = activeWorkflow.nodes.length;
-    const stepType = getDefaultStepType(nodeCount);
+    const stepType = requestedStepType ?? getDefaultStepType(nodeCount);
     const nextNode = {
-      id: `rectangle-${Date.now()}-${nodeCount + 1}`,
+      id: `${stepType}-${Date.now()}-${nodeCount + 1}`,
       kind: "rectangle" as const,
       name: getDefaultStepName(stepType),
       status: "idle" as const,
@@ -508,6 +606,18 @@ export default function Home() {
       ...workflow,
       nodes: [...workflow.nodes, nextNode],
     }));
+  }
+
+  async function openWorkflowPythonScript(nodeId: string) {
+    if (!activeProject || !activeWorkflow) {
+      throw new Error("The workflow is no longer available.");
+    }
+
+    await openPythonScriptInVsCode(
+      activeProject.name,
+      activeWorkflow.name,
+      nodeId,
+    );
   }
 
   function startWorkflowNodeMove() {
@@ -524,6 +634,37 @@ export default function Home() {
 
         return { ...node, x, y };
       }),
+    }));
+  }
+
+  function moveWorkflowTrigger(x: number, y: number) {
+    updateActiveWorkflow((workflow) => ({
+      ...workflow,
+      trigger: { x, y },
+    }));
+  }
+
+  function addWorkflowTrigger() {
+    if (!activeWorkflow || activeWorkflow.trigger !== null) {
+      return;
+    }
+
+    saveWorkflowUndoStep();
+    updateActiveWorkflow((workflow) => ({
+      ...workflow,
+      trigger: { ...defaultWorkflowTriggerPosition },
+    }));
+  }
+
+  function deleteWorkflowTrigger() {
+    if (!activeWorkflow || activeWorkflow.trigger === null) {
+      return;
+    }
+
+    saveWorkflowUndoStep();
+    updateActiveWorkflow((workflow) => ({
+      ...workflow,
+      trigger: null,
     }));
   }
 
@@ -554,17 +695,30 @@ export default function Home() {
     }));
   }
 
-  function deleteWorkflowNode(nodeId: string) {
-    if (!activeWorkflow) {
+  async function deleteWorkflowNode(nodeId: string) {
+    if (!activeProject || !activeWorkflow) {
       return;
     }
 
-    const nodeExists = activeWorkflow.nodes.some((node) => {
+    const node = activeWorkflow.nodes.find((node) => {
       return node.id === nodeId;
     });
 
-    if (!nodeExists) {
+    if (!node) {
       return;
+    }
+
+    if (node.stepType === "python") {
+      try {
+        await trashPythonScriptFile(
+          activeProject.name,
+          activeWorkflow.name,
+          node.id,
+        );
+      } catch {
+        setWorkspaceSaveStatus("error");
+        return;
+      }
     }
 
     saveWorkflowUndoStep();
@@ -701,6 +855,171 @@ export default function Home() {
     deleteProject(deleteProjectName);
   }
 
+  function deleteWorkflow(workflowName: string) {
+    if (!activeProject) {
+      return;
+    }
+
+    setProjects((currentProjects) =>
+      currentProjects.map((project) => {
+        if (project.name !== activeProject.name) {
+          return project;
+        }
+
+        return {
+          ...project,
+          workflows: project.workflows.filter((workflow) => {
+            return workflow.name !== workflowName;
+          }),
+        };
+      }),
+    );
+    setDeleteWorkflowName("");
+    setDeleteWorkflowConfirmationText("");
+
+    if (workflowName === activeWorkflowName) {
+      setActiveWorkflowName("");
+      setActiveItemLevel("project");
+      setIsWorkflowRunning(false);
+      setWorkflowUndoStack([]);
+    }
+  }
+
+  function confirmDeleteWorkflow(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!canDeleteWorkflow) {
+      return;
+    }
+
+    deleteWorkflow(deleteWorkflowName);
+  }
+
+  useEffect(() => {
+    const abortController = new AbortController();
+
+    async function hydrateWorkspace() {
+      try {
+        const savedWorkspace = await loadWorkspace(abortController.signal);
+
+        if (abortController.signal.aborted) {
+          return;
+        }
+
+        if (savedWorkspace) {
+          const workspace = savedWorkspace.workspace;
+
+          workspaceRevisionRef.current = savedWorkspace.revision;
+          lastSavedWorkspaceRef.current = JSON.stringify(workspace);
+          setProjects(workspace.projects);
+          setActiveProjectName(workspace.activeProjectName);
+          setActiveWorkflowName(workspace.activeWorkflowName);
+          setActiveItemLevel(workspace.activeItemLevel);
+        }
+
+        setWorkspaceSaveStatus("saved");
+      } catch {
+        if (abortController.signal.aborted) {
+          return;
+        }
+
+        setWorkspaceSaveStatus("error");
+      } finally {
+        if (!abortController.signal.aborted) {
+          setIsWorkspaceHydrated(true);
+        }
+      }
+    }
+
+    void hydrateWorkspace();
+
+    return () => abortController.abort();
+  }, []);
+
+  useEffect(() => {
+    isAppMountedRef.current = true;
+
+    return () => {
+      isAppMountedRef.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isWorkspaceHydrated) {
+      return;
+    }
+
+    const serializedWorkspace = JSON.stringify(durableWorkspace);
+
+    if (serializedWorkspace === lastSavedWorkspaceRef.current) {
+      if (
+        pendingWorkspaceSaveRef.current?.serialized === serializedWorkspace
+      ) {
+        pendingWorkspaceSaveRef.current = null;
+      }
+
+      return;
+    }
+
+    if (serializedWorkspace === pendingWorkspaceSaveRef.current?.serialized) {
+      return;
+    }
+
+    pendingWorkspaceSaveRef.current = {
+      serialized: serializedWorkspace,
+      snapshot: durableWorkspace,
+    };
+
+    const saveTimer = window.setTimeout(async () => {
+      if (isWorkspaceSaveInFlightRef.current) {
+        return;
+      }
+
+      isWorkspaceSaveInFlightRef.current = true;
+
+      try {
+        while (
+          pendingWorkspaceSaveRef.current &&
+          pendingWorkspaceSaveRef.current.serialized !==
+            lastSavedWorkspaceRef.current
+        ) {
+          const pendingSave = pendingWorkspaceSaveRef.current;
+          pendingWorkspaceSaveRef.current = null;
+
+          if (isAppMountedRef.current) {
+            setWorkspaceSaveStatus("saving");
+          }
+
+          try {
+            const savedWorkspace = await saveWorkspace(
+              pendingSave.snapshot,
+              workspaceRevisionRef.current,
+            );
+
+            workspaceRevisionRef.current = savedWorkspace.revision;
+            lastSavedWorkspaceRef.current = pendingSave.serialized;
+          } catch {
+            pendingWorkspaceSaveRef.current = pendingSave;
+
+            if (isAppMountedRef.current) {
+              setWorkspaceSaveStatus("error");
+            }
+
+            return;
+          }
+        }
+
+        if (isAppMountedRef.current) {
+          setWorkspaceSaveStatus("saved");
+        }
+      } finally {
+        isWorkspaceSaveInFlightRef.current = false;
+      }
+    }, 400);
+
+    return () => window.clearTimeout(saveTimer);
+  }, [durableWorkspace, isWorkspaceHydrated]);
+
   useEffect(() => {
     function undoWithKeyboard(event: KeyboardEvent) {
       const isUndoShortcut =
@@ -756,17 +1075,24 @@ export default function Home() {
           canUndoWorkflowEdit={canUndoWorkflowEdit}
           hasProject={hasProject}
           isWorkflowRunning={isWorkflowRunning}
+          onAddWorkflowTrigger={addWorkflowTrigger}
           onAddWorkflowNode={addWorkflowNode}
           onBackToProject={backToProject}
           onConnectWorkflowNodes={connectWorkflowNodes}
           onCreateWorkflow={openWorkflowDialog}
+          onOpenDeleteWorkflowDialog={openDeleteWorkflowDialog}
           onDeleteWorkflowNode={deleteWorkflowNode}
+          onDeleteWorkflowTrigger={deleteWorkflowTrigger}
           onMoveWorkflowNode={moveWorkflowNode}
+          onMoveWorkflowTrigger={moveWorkflowTrigger}
+          onOpenPythonScript={openWorkflowPythonScript}
+          onRenameWorkflow={renameWorkflow}
           onRunWorkflowDemo={runWorkflowDemo}
           onSelectWorkflow={selectWorkflow}
           onStartWorkflowNodeMove={startWorkflowNodeMove}
           onUndoWorkflowEdit={undoWorkflowEdit}
           onUpdateWorkflowNode={updateWorkflowNode}
+          workspaceSaveStatus={workspaceSaveStatus}
         />
       </section>
 
@@ -800,6 +1126,19 @@ export default function Home() {
           onCancel={closeDeleteProjectDialog}
           onConfirmationChange={setDeleteProjectConfirmationText}
           onSubmit={confirmDeleteProject}
+        />
+      )}
+
+      {deleteWorkflowName && (
+        <DeleteDialog
+          canDelete={canDeleteWorkflow}
+          confirmationText={deleteWorkflowConfirmationText}
+          description={`This will delete ${deleteWorkflowName} and all its nodes and connections.`}
+          itemName={deleteWorkflowName}
+          label="workflow"
+          onCancel={closeDeleteWorkflowDialog}
+          onConfirmationChange={setDeleteWorkflowConfirmationText}
+          onSubmit={confirmDeleteWorkflow}
         />
       )}
 

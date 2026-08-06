@@ -24,9 +24,9 @@ This repository currently contains the project foundation and the first tiny fro
 - Husky and commitlint setup
 - first Next.js projects and workflows screen
 
-The first implementation is intentionally small: a Next.js screen with one starter project and a simple way to add workflows inside it.
+The first implementation is intentionally small: a Next.js workflow canvas backed by a local ASP.NET Core runner and SQLite workspace storage.
 
-The web frontend uses Next.js + React + TypeScript.
+The web frontend uses Next.js + React + TypeScript. The local runner uses ASP.NET Core + SQLite.
 
 Public project website:
 
@@ -84,6 +84,16 @@ Run the Next.js app:
 ```bash
 npm run start:web
 ```
+
+In another terminal, run the local runner:
+
+```bash
+npm run start:runner
+```
+
+The web app runs at `http://127.0.0.1:3000` and the runner listens on `http://127.0.0.1:5127`.
+
+The runner stores the workspace in the operating system's local application-data directory. Set `PAPLIBA_DATA_DIRECTORY` when you need a custom location for development or testing.
 
 ## Commit Style
 

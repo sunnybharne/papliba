@@ -2,6 +2,10 @@ import type { ThemeMode } from "./types";
 
 export const themeStorageKey = "papliba-theme";
 
+export const workspaceSchemaVersion = 1;
+
+export const defaultWorkflowTriggerPosition = { x: 24, y: 26 };
+
 export const themeOptions: { label: string; value: ThemeMode }[] = [
   { label: "System", value: "system" },
   { label: "Light", value: "light" },

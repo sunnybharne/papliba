@@ -1,7 +1,9 @@
 import {
+  useEffect,
   useRef,
   useState,
   type DragEvent,
+  type KeyboardEvent,
   type PointerEvent as ReactPointerEvent,
 } from "react";
 
@@ -11,12 +13,16 @@ import type {
   WorkflowNode,
   WorkflowNodeStepType,
   WorkflowNodeStatus,
+  WorkflowTrigger,
+  WorkspaceSaveStatus,
 } from "../types";
+import { defaultWorkflowTriggerPosition } from "../constants";
 
 type ActiveItem = {
   connections?: WorkflowConnection[];
   name: string;
   nodes?: WorkflowNode[];
+  trigger?: WorkflowTrigger | null;
   workflows?: Workflow[];
 };
 
@@ -28,12 +34,21 @@ type WorkspacePanelProps = {
   canUndoWorkflowEdit: boolean;
   hasProject: boolean;
   isWorkflowRunning: boolean;
-  onAddWorkflowNode: (position?: { x: number; y: number }) => void;
+  onAddWorkflowNode: (
+    position?: { x: number; y: number },
+    stepType?: WorkflowNodeStepType,
+  ) => void;
+  onAddWorkflowTrigger: () => void;
   onBackToProject: () => void;
   onConnectWorkflowNodes: (fromNodeId: string, toNodeId: string) => void;
   onCreateWorkflow: () => void;
+  onOpenDeleteWorkflowDialog: (workflowName: string) => void;
   onDeleteWorkflowNode: (nodeId: string) => void;
+  onDeleteWorkflowTrigger: () => void;
   onMoveWorkflowNode: (nodeId: string, x: number, y: number) => void;
+  onMoveWorkflowTrigger: (x: number, y: number) => void;
+  onOpenPythonScript: (nodeId: string) => Promise<void>;
+  onRenameWorkflow: (workflowName: string, nextName: string) => string;
   onRunWorkflowDemo: () => void;
   onSelectWorkflow: (workflowName: string) => void;
   onStartWorkflowNodeMove: () => void;
@@ -42,6 +57,7 @@ type WorkspacePanelProps = {
     nodeId: string,
     updateNode: { name?: string; stepType?: WorkflowNodeStepType },
   ) => void;
+  workspaceSaveStatus: WorkspaceSaveStatus;
 };
 
 export function WorkspacePanel({
@@ -51,16 +67,23 @@ export function WorkspacePanel({
   hasProject,
   isWorkflowRunning,
   onAddWorkflowNode,
+  onAddWorkflowTrigger,
   onBackToProject,
   onConnectWorkflowNodes,
   onCreateWorkflow,
+  onOpenDeleteWorkflowDialog,
   onDeleteWorkflowNode,
+  onDeleteWorkflowTrigger,
   onMoveWorkflowNode,
+  onMoveWorkflowTrigger,
+  onOpenPythonScript,
+  onRenameWorkflow,
   onRunWorkflowDemo,
   onSelectWorkflow,
   onStartWorkflowNodeMove,
   onUndoWorkflowEdit,
   onUpdateWorkflowNode,
+  workspaceSaveStatus,
 }: WorkspacePanelProps) {
   return (
     <section className="workspace-panel">
@@ -68,6 +91,7 @@ export function WorkspacePanel({
         activeItem={activeItem}
         activeItemType={activeItemType}
         onBackToProject={onBackToProject}
+        workspaceSaveStatus={workspaceSaveStatus}
       />
 
       <div className={hasProject ? "content-area" : "content-area empty"}>
@@ -82,10 +106,19 @@ export function WorkspacePanel({
             connections={activeItem?.connections ?? []}
             isRunning={isWorkflowRunning}
             nodes={activeItem?.nodes ?? []}
+            trigger={
+              activeItem?.trigger === undefined
+                ? defaultWorkflowTriggerPosition
+                : activeItem.trigger
+            }
             onAddNode={onAddWorkflowNode}
+            onAddTrigger={onAddWorkflowTrigger}
             onConnectNodes={onConnectWorkflowNodes}
             onDeleteNode={onDeleteWorkflowNode}
+            onDeleteTrigger={onDeleteWorkflowTrigger}
             onMoveNode={onMoveWorkflowNode}
+            onMoveTrigger={onMoveWorkflowTrigger}
+            onOpenPythonScript={onOpenPythonScript}
             onRun={onRunWorkflowDemo}
             onStartNodeMove={onStartWorkflowNodeMove}
             onUndo={onUndoWorkflowEdit}
@@ -94,6 +127,8 @@ export function WorkspacePanel({
         ) : (
           <ProjectWorkflows
             onCreateWorkflow={onCreateWorkflow}
+            onOpenDeleteWorkflowDialog={onOpenDeleteWorkflowDialog}
+            onRenameWorkflow={onRenameWorkflow}
             onSelectWorkflow={onSelectWorkflow}
             workflows={activeItem?.workflows ?? []}
           />
@@ -107,12 +142,14 @@ type WorkspaceHeaderProps = {
   activeItem: ActiveItem | undefined;
   activeItemType: ActiveItemType;
   onBackToProject: () => void;
+  workspaceSaveStatus: WorkspaceSaveStatus;
 };
 
 function WorkspaceHeader({
   activeItem,
   activeItemType,
   onBackToProject,
+  workspaceSaveStatus,
 }: WorkspaceHeaderProps) {
   return (
     <header className="workspace-header">
@@ -132,7 +169,24 @@ function WorkspaceHeader({
           <strong>{activeItem.name}</strong>
         </div>
       )}
+      <WorkspaceStatus status={workspaceSaveStatus} />
     </header>
+  );
+}
+
+function WorkspaceStatus({ status }: { status: WorkspaceSaveStatus }) {
+  const label = {
+    error: "Not saved",
+    loading: "Connecting",
+    saved: "Saved",
+    saving: "Saving",
+  }[status];
+
+  return (
+    <span className="workspace-save-status" data-status={status} role="status">
+      <span aria-hidden="true" className="workspace-save-status-dot" />
+      {label}
+    </span>
   );
 }
 
@@ -172,48 +226,173 @@ function WorkspaceItemIcon({ itemType }: { itemType: ActiveItemType }) {
 
 type ProjectWorkflowsProps = {
   onCreateWorkflow: () => void;
+  onOpenDeleteWorkflowDialog: (workflowName: string) => void;
+  onRenameWorkflow: (workflowName: string, nextName: string) => string;
   onSelectWorkflow: (workflowName: string) => void;
   workflows: Workflow[];
 };
 
 function ProjectWorkflows({
   onCreateWorkflow,
+  onOpenDeleteWorkflowDialog,
+  onRenameWorkflow,
   onSelectWorkflow,
   workflows,
 }: ProjectWorkflowsProps) {
+  const renameInputRef = useRef<HTMLInputElement>(null);
+  const [renameWorkflowName, setRenameWorkflowName] = useState("");
+  const [renameDraft, setRenameDraft] = useState("");
+  const [renameError, setRenameError] = useState("");
+
+  useEffect(() => {
+    if (!renameWorkflowName) {
+      return;
+    }
+
+    const focusFrame = window.requestAnimationFrame(() => {
+      renameInputRef.current?.focus();
+      renameInputRef.current?.select();
+    });
+
+    return () => window.cancelAnimationFrame(focusFrame);
+  }, [renameWorkflowName]);
+
+  function startRename(workflowName: string) {
+    setRenameWorkflowName(workflowName);
+    setRenameDraft(workflowName);
+    setRenameError("");
+  }
+
+  function cancelRename() {
+    setRenameWorkflowName("");
+    setRenameDraft("");
+    setRenameError("");
+  }
+
+  function saveRename() {
+    if (!renameWorkflowName) {
+      return;
+    }
+
+    const error = onRenameWorkflow(renameWorkflowName, renameDraft.trim());
+
+    if (error) {
+      setRenameError(error);
+      renameInputRef.current?.focus();
+      return;
+    }
+
+    cancelRename();
+  }
+
+  function saveRenameOnBlur() {
+    if (!renameWorkflowName) {
+      return;
+    }
+
+    const error = onRenameWorkflow(renameWorkflowName, renameDraft.trim());
+
+    if (error) {
+      cancelRename();
+      return;
+    }
+
+    cancelRename();
+  }
+
+  function handleRenameKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      saveRename();
+    }
+
+    if (event.key === "Escape") {
+      event.preventDefault();
+      cancelRename();
+    }
+  }
+
   return (
     <section className="project-workflows-panel">
-      <div className="project-workflows-card">
-        <div className="project-workflows-header">
-          <strong>Workflows</strong>
-          <button
-            aria-label="Create workflow"
-            className="panel-icon-button"
-            onClick={onCreateWorkflow}
-            type="button"
-          >
-            <PlusIcon />
-          </button>
+      <div className="project-workflows-header">
+        <div>
+          <h1>Workflows</h1>
+          <p>Build and manage automations for this project.</p>
         </div>
-
-        {workflows.length === 0 ? (
-          <div className="workflow-empty">No workflows yet.</div>
-        ) : (
-          <div className="workflow-list">
-            {workflows.map((workflow) => (
-              <button
-                className="workflow-item"
-                key={workflow.name}
-                onClick={() => onSelectWorkflow(workflow.name)}
-                type="button"
-              >
-                <WorkflowIcon />
-                <strong>{workflow.name}</strong>
-              </button>
-            ))}
-          </div>
-        )}
+        <button
+          className="workflow-create-button"
+          onClick={onCreateWorkflow}
+          type="button"
+        >
+          <PlusIcon />
+          New workflow
+        </button>
       </div>
+
+      {workflows.length === 0 ? (
+        <div className="workflow-empty">
+          <WorkflowIcon />
+          <strong>No workflows yet</strong>
+          <p>Create a workflow to start building your automation.</p>
+        </div>
+      ) : (
+        <div className="workflow-list">
+          {workflows.map((workflow) => (
+            <div className="workflow-item-row" key={workflow.name}>
+              {renameWorkflowName === workflow.name ? (
+                <div className="workflow-item workflow-item-renaming">
+                  <WorkflowIcon />
+                  <input
+                    aria-invalid={renameError.length > 0}
+                    aria-label="Rename workflow"
+                    className="workflow-rename-input"
+                    onBlur={saveRenameOnBlur}
+                    onChange={(event) => {
+                      setRenameDraft(event.target.value.toLowerCase());
+                      setRenameError("");
+                    }}
+                    onKeyDown={handleRenameKeyDown}
+                    ref={renameInputRef}
+                    title={renameError}
+                    value={renameDraft}
+                  />
+                </div>
+              ) : (
+                <>
+                  <button
+                    className="workflow-item"
+                    onClick={() => onSelectWorkflow(workflow.name)}
+                    type="button"
+                  >
+                    <WorkflowIcon />
+                    <strong>{workflow.name}</strong>
+                  </button>
+                  <div className="workflow-item-actions">
+                    <button
+                      aria-label={`Rename ${workflow.name}`}
+                      className="workflow-item-action"
+                      onClick={() => startRename(workflow.name)}
+                      type="button"
+                    >
+                      <RenameIcon />
+                    </button>
+                    <button
+                      aria-label={`Delete ${workflow.name}`}
+                      className="workflow-item-action workflow-item-delete"
+                      onClick={() =>
+                        onOpenDeleteWorkflowDialog(workflow.name)
+                      }
+                      type="button"
+                    >
+                      <TrashIcon />
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </section>
   );
 }
@@ -223,10 +402,18 @@ type WorkflowCanvasProps = {
   connections: WorkflowConnection[];
   isRunning: boolean;
   nodes: WorkflowNode[];
-  onAddNode: (position?: { x: number; y: number }) => void;
+  trigger: WorkflowTrigger | null;
+  onAddNode: (
+    position?: { x: number; y: number },
+    stepType?: WorkflowNodeStepType,
+  ) => void;
+  onAddTrigger: () => void;
   onConnectNodes: (fromNodeId: string, toNodeId: string) => void;
   onDeleteNode: (nodeId: string) => void;
+  onDeleteTrigger: () => void;
   onMoveNode: (nodeId: string, x: number, y: number) => void;
+  onMoveTrigger: (x: number, y: number) => void;
+  onOpenPythonScript: (nodeId: string) => Promise<void>;
   onRun: () => void;
   onStartNodeMove: () => void;
   onUndo: () => void;
@@ -241,10 +428,15 @@ function WorkflowCanvas({
   connections,
   isRunning,
   nodes,
+  trigger,
   onAddNode,
+  onAddTrigger,
   onConnectNodes,
   onDeleteNode,
+  onDeleteTrigger,
   onMoveNode,
+  onMoveTrigger,
+  onOpenPythonScript,
   onRun,
   onStartNodeMove,
   onUndo,
@@ -259,9 +451,9 @@ function WorkflowCanvas({
   function dropNode(event: DragEvent<HTMLDivElement>) {
     event.preventDefault();
 
-    const kind = event.dataTransfer.getData("application/papliba-node");
+    const tool = event.dataTransfer.getData("application/papliba-node");
 
-    if (kind !== "rectangle") {
+    if (tool !== "rectangle" && tool !== "python") {
       return;
     }
 
@@ -271,18 +463,30 @@ function WorkflowCanvas({
       return;
     }
 
-    onAddNode({
-      x: event.clientX - canvasRect.left - getNodeSize().width / 2,
-      y: event.clientY - canvasRect.top - getNodeSize().height / 2,
-    });
+    const stepType = tool === "python" ? "python" : undefined;
+    const nodeSize = getNodeSize(stepType);
+
+    onAddNode(
+      {
+        x: event.clientX - canvasRect.left - nodeSize.width / 2,
+        y: event.clientY - canvasRect.top - nodeSize.height / 2,
+      },
+      stepType,
+    );
   }
 
   function allowDrop(event: DragEvent<HTMLDivElement>) {
     event.preventDefault();
   }
 
-  function startDragTool(event: DragEvent<HTMLButtonElement>) {
-    event.dataTransfer.setData("application/papliba-node", "rectangle");
+  function startDragTool(
+    event: DragEvent<HTMLButtonElement>,
+    stepType?: WorkflowNodeStepType,
+  ) {
+    event.dataTransfer.setData(
+      "application/papliba-node",
+      stepType === "python" ? "python" : "rectangle",
+    );
   }
 
   function startConnection(nodeId: string) {
@@ -298,9 +502,22 @@ function WorkflowCanvas({
     setConnectingFromNodeId("");
   }
 
+  function clearNodeSelection(event: ReactPointerEvent<HTMLDivElement>) {
+    const target = event.target as HTMLElement;
+
+    if (target.closest(".workflow-node, .workflow-node-panel")) {
+      return;
+    }
+
+    setOpenNodeId("");
+  }
+
   return (
     <section className="workflow-canvas-panel">
-      <div className="workflow-toolbar">
+      <div
+        className="workflow-toolbar"
+        onPointerDown={() => setOpenNodeId("")}
+      >
         <button
           className="workflow-run-button"
           disabled={isRunning || nodes.length === 0}
@@ -312,6 +529,7 @@ function WorkflowCanvas({
         <button
           aria-label="Undo"
           className="workflow-tool-button"
+          data-tooltip="Undo"
           disabled={!canUndo}
           onClick={onUndo}
           type="button"
@@ -319,8 +537,19 @@ function WorkflowCanvas({
           <UndoIcon />
         </button>
         <button
+          aria-label="Add manual trigger"
+          className="workflow-tool-button"
+          data-tooltip="Manual trigger"
+          disabled={trigger !== null}
+          onClick={onAddTrigger}
+          type="button"
+        >
+          <TriggerToolIcon />
+        </button>
+        <button
           aria-label="Add node"
           className="workflow-tool-button"
+          data-tooltip="Add node"
           draggable
           onClick={() => onAddNode()}
           onDragStart={startDragTool}
@@ -328,19 +557,31 @@ function WorkflowCanvas({
         >
           <RectangleToolIcon />
         </button>
+        <button
+          aria-label="Add Python script"
+          className="workflow-tool-button workflow-python-tool-button"
+          data-tooltip="Python script"
+          draggable
+          onClick={() => onAddNode(undefined, "python")}
+          onDragStart={(event) => startDragTool(event, "python")}
+          type="button"
+        >
+          <PythonToolIcon />
+        </button>
       </div>
 
       <div
         className="workflow-canvas"
         onDragOver={allowDrop}
         onDrop={dropNode}
+        onPointerDown={clearNodeSelection}
         ref={canvasRef}
       >
         <svg aria-hidden="true" className="workflow-connections">
-          {firstNode && (
+          {firstNode && trigger && (
             <path
               className="workflow-trigger-connection"
-              d={getTriggerConnectionPath(firstNode)}
+              d={getTriggerConnectionPath(firstNode, trigger)}
             />
           )}
           {connections.map((connection) => {
@@ -359,7 +600,15 @@ function WorkflowCanvas({
           })}
         </svg>
 
-        <WorkflowTriggerBlock isRunning={isRunning} />
+        {trigger && (
+          <WorkflowTriggerBlock
+            isRunning={isRunning}
+            onDelete={onDeleteTrigger}
+            onMove={onMoveTrigger}
+            onStartMove={onStartNodeMove}
+            trigger={trigger}
+          />
+        )}
 
         {nodes.map((node) => (
           <WorkflowNodeView
@@ -371,6 +620,7 @@ function WorkflowCanvas({
             onFinishConnection={finishConnection}
             onMoveNode={onMoveNode}
             onOpen={setOpenNodeId}
+            onOpenPythonScript={onOpenPythonScript}
             onStartMove={onStartNodeMove}
             onStartConnection={startConnection}
           />
@@ -398,13 +648,78 @@ type WorkflowNodeViewProps = {
   onFinishConnection: (nodeId: string) => void;
   onMoveNode: (nodeId: string, x: number, y: number) => void;
   onOpen: (nodeId: string) => void;
+  onOpenPythonScript: (nodeId: string) => Promise<void>;
   onStartMove: () => void;
   onStartConnection: (nodeId: string) => void;
 };
 
-function WorkflowTriggerBlock({ isRunning }: { isRunning: boolean }) {
+type WorkflowTriggerBlockProps = {
+  isRunning: boolean;
+  onDelete: () => void;
+  onMove: (x: number, y: number) => void;
+  onStartMove: () => void;
+  trigger: WorkflowTrigger;
+};
+
+function WorkflowTriggerBlock({
+  isRunning,
+  onDelete,
+  onMove,
+  onStartMove,
+  trigger,
+}: WorkflowTriggerBlockProps) {
+  function dragTrigger(event: ReactPointerEvent<HTMLElement>) {
+    const target = event.target as HTMLElement;
+
+    if (target.closest("button")) {
+      return;
+    }
+
+    event.preventDefault();
+
+    const startX = event.clientX;
+    const startY = event.clientY;
+    const startTriggerX = trigger.x;
+    const startTriggerY = trigger.y;
+    let hasStartedMoving = false;
+
+    function moveTrigger(pointerEvent: PointerEvent) {
+      if (!hasStartedMoving) {
+        onStartMove();
+        hasStartedMoving = true;
+      }
+
+      onMove(
+        Math.max(12, startTriggerX + pointerEvent.clientX - startX),
+        Math.max(12, startTriggerY + pointerEvent.clientY - startY),
+      );
+    }
+
+    function stopMovingTrigger() {
+      window.removeEventListener("pointermove", moveTrigger);
+      window.removeEventListener("pointerup", stopMovingTrigger);
+    }
+
+    window.addEventListener("pointermove", moveTrigger);
+    window.addEventListener("pointerup", stopMovingTrigger);
+  }
+
   return (
-    <article className="workflow-trigger-node" data-running={isRunning}>
+    <article
+      aria-label="Manual trigger"
+      className="workflow-trigger-node"
+      data-running={isRunning}
+      onPointerDown={dragTrigger}
+      style={{ left: trigger.x, top: trigger.y }}
+    >
+      <button
+        aria-label="Delete manual trigger"
+        className="workflow-delete-button"
+        onClick={onDelete}
+        type="button"
+      >
+        <TrashIcon />
+      </button>
       <span>Trigger</span>
       <strong>Manual trigger</strong>
     </article>
@@ -419,10 +734,28 @@ function WorkflowNodeView({
   onFinishConnection,
   onMoveNode,
   onOpen,
+  onOpenPythonScript,
   onStartMove,
   onStartConnection,
 }: WorkflowNodeViewProps) {
-  const size = getNodeSize();
+  const size = getNodeSize(node.stepType);
+  const [isOpeningScript, setIsOpeningScript] = useState(false);
+  const [openScriptError, setOpenScriptError] = useState("");
+
+  async function openScript() {
+    setIsOpeningScript(true);
+    setOpenScriptError("");
+
+    try {
+      await onOpenPythonScript(node.id);
+    } catch (error) {
+      setOpenScriptError(
+        error instanceof Error ? error.message : "Could not open the script.",
+      );
+    } finally {
+      setIsOpeningScript(false);
+    }
+  }
 
   function dragNode(event: ReactPointerEvent<HTMLElement>) {
     const target = event.target as HTMLElement;
@@ -478,7 +811,7 @@ function WorkflowNodeView({
       }}
     >
       <button
-        aria-label="Delete rectangle"
+        aria-label={`Delete ${node.name}`}
         className="workflow-delete-button"
         onClick={() => onDelete(node.id)}
         type="button"
@@ -486,7 +819,7 @@ function WorkflowNodeView({
         <TrashIcon />
       </button>
       <button
-        aria-label={`Connect to ${node.kind}`}
+        aria-label={`Connect to ${node.name}`}
         className="workflow-port workflow-port-input"
         onClick={() => onFinishConnection(node.id)}
         type="button"
@@ -497,9 +830,21 @@ function WorkflowNodeView({
         <span className="workflow-node-status" data-status={node.status}>
           {getStatusLabel(node.status)}
         </span>
+        {node.stepType === "python" && (
+          <button
+            className="workflow-open-code-button"
+            disabled={isOpeningScript}
+            onClick={openScript}
+            title={openScriptError || "Open this script in Visual Studio Code"}
+            type="button"
+          >
+            <CodeEditorIcon />
+            {isOpeningScript ? "Opening…" : "Open in VS Code"}
+          </button>
+        )}
       </div>
       <button
-        aria-label={`Connect from ${node.kind}`}
+        aria-label={`Connect from ${node.name}`}
         className="workflow-port workflow-port-output"
         data-active={connectingFromNodeId === node.id}
         onClick={() => onStartConnection(node.id)}
@@ -542,9 +887,9 @@ function WorkflowNodePanel({ node, onClose, onUpdate }: WorkflowNodePanelProps) 
   return (
     <aside className="workflow-node-panel">
       <div className="workflow-node-panel-header">
-        <strong>Step</strong>
+        <strong>{node.stepType === "python" ? "Python script" : "AI step"}</strong>
         <button
-          aria-label="Close rectangle"
+          aria-label={`Close ${node.name}`}
           className="workflow-node-panel-close"
           onClick={onClose}
           type="button"
@@ -598,18 +943,19 @@ function WorkflowNodePanel({ node, onClose, onUpdate }: WorkflowNodePanelProps) 
   );
 }
 
-function getNodeSize() {
-  return { height: 86, width: 150 };
+function getNodeSize(stepType?: WorkflowNodeStepType) {
+  return { height: stepType === "python" ? 118 : 86, width: 150 };
 }
 
-function getTriggerConnectionPath(node: WorkflowNode) {
-  const triggerX = 24;
-  const triggerY = 26;
+function getTriggerConnectionPath(
+  node: WorkflowNode,
+  trigger: WorkflowTrigger,
+) {
   const triggerWidth = 150;
   const triggerHeight = 70;
-  const nodeSize = getNodeSize();
-  const startX = triggerX + triggerWidth;
-  const startY = triggerY + triggerHeight / 2;
+  const nodeSize = getNodeSize(node.stepType);
+  const startX = trigger.x + triggerWidth;
+  const startY = trigger.y + triggerHeight / 2;
   const endX = node.x;
   const endY = node.y + nodeSize.height / 2;
   const curve = Math.max(60, Math.abs(endX - startX) / 2);
@@ -630,8 +976,8 @@ function getConnectionPath(
     return "";
   }
 
-  const fromSize = getNodeSize();
-  const toSize = getNodeSize();
+  const fromSize = getNodeSize(fromNode.stepType);
+  const toSize = getNodeSize(toNode.stepType);
   const startX = fromNode.x + fromSize.width;
   const startY = fromNode.y + fromSize.height / 2;
   const endX = toNode.x;
@@ -678,6 +1024,15 @@ function TrashIcon() {
   );
 }
 
+function RenameIcon() {
+  return (
+    <svg aria-hidden="true" fill="none" viewBox="0 0 24 24">
+      <path d="m4 16-1 5 5-1L19 9l-4-4Z" />
+      <path d="m13 7 4 4" />
+    </svg>
+  );
+}
+
 function CloseIcon() {
   return (
     <svg aria-hidden="true" fill="none" viewBox="0 0 24 24">
@@ -696,6 +1051,43 @@ function RectangleToolIcon() {
       viewBox="0 0 24 24"
     >
       <rect height="10" rx="2" width="16" x="4" y="7" />
+    </svg>
+  );
+}
+
+function PythonToolIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      className="workflow-tool-icon"
+      fill="none"
+      viewBox="0 0 24 24"
+    >
+      <path d="M9 6H7l-4 6 4 6h2" />
+      <path d="M15 6h2l4 6-4 6h-2" />
+      <path d="m13 5-2 14" />
+    </svg>
+  );
+}
+
+function CodeEditorIcon() {
+  return (
+    <svg aria-hidden="true" fill="none" viewBox="0 0 24 24">
+      <path d="m9 7-5 5 5 5" />
+      <path d="m15 7 5 5-5 5" />
+    </svg>
+  );
+}
+
+function TriggerToolIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      className="workflow-tool-icon"
+      fill="none"
+      viewBox="0 0 24 24"
+    >
+      <path d="m13 2-8 12h7l-1 8 8-12h-7Z" />
     </svg>
   );
 }

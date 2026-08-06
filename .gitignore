@@ -18,7 +18,11 @@ obj/
 dist/
 coverage/
 
+# Local Papliba data
+*.db
+*.db-shm
+*.db-wal
+
 # Editor
 .vscode/
 .idea/
-

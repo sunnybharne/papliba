@@ -6,8 +6,23 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ## [Unreleased]
 
+### Added
+
+- Added a loopback-only ASP.NET Core local runner.
+- Added revisioned SQLite workspace persistence.
+- Added frontend workspace hydration, debounced autosave, and save status.
+- Added confirmed workflow deletion from workflow cards.
+- Added inline workflow renaming from workflow cards.
+- Made manual workflow triggers draggable with persisted positions and undo.
+- Added manual trigger deletion and restoration from the workflow toolbar.
+- Added a draggable Python script tool that creates a persisted workflow step.
+- Added persistent Python files with an Open in VS Code action on Python nodes.
+- Organized Python files by project and workflow with automatic legacy migration.
+- Move Python files to recoverable trash when their workflow nodes are deleted.
+
 ### Changed
 
+- Clear the selected workflow node when clicking the trigger, toolbar, or canvas.
 - Simplified the app hierarchy to Projects and Workflows.
 - Kept a starter project for new users instead of asking them to create every layer first.
 - Made the global search dialog more compact.

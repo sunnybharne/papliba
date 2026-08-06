@@ -4,9 +4,11 @@
   "description": "Papliba local-first workflow builder.",
   "private": true,
   "scripts": {
-    "validate": "npm run validate:diagram && npm run build:web",
+    "validate": "npm run validate:diagram && npm run build:runner && npm run build:web",
     "validate:diagram": "xmllint --noout docs/diagrams/papliba-architecture.drawio",
+    "build:runner": "dotnet build src/Papliba.Runner/Papliba.Runner.csproj",
     "build:web": "npm --prefix src/Papliba.Web run build",
+    "start:runner": "dotnet run --project src/Papliba.Runner/Papliba.Runner.csproj",
     "start:web": "npm --prefix src/Papliba.Web run dev",
     "commitlint": "commitlint",
     "prepare": "husky"
