@@ -184,6 +184,34 @@ export async function loadPythonScriptContent(
   return body.code;
 }
 
+export async function renamePythonScriptFile(
+  projectName: string,
+  workflowName: string,
+  nodeId: string,
+  scriptName: string,
+  nextScriptName: string,
+) {
+  const response = await fetch(`${runnerBaseUrl}/api/python-scripts/rename`, {
+    body: JSON.stringify({
+      nextScriptName,
+      nodeId,
+      projectName,
+      scriptName,
+      workflowName,
+    }),
+    headers: {
+      "Content-Type": "application/json",
+    },
+    method: "POST",
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      await getApiErrorMessage(response, "Could not rename Python script."),
+    );
+  }
+}
+
 export async function trashPythonScriptFile(
   projectName: string,
   workflowName: string,
@@ -347,6 +375,11 @@ function isWorkflow(value: unknown): value is Workflow {
     value.nodes.every(isWorkflowNode) &&
     Array.isArray(value.connections) &&
     value.connections.every(isWorkflowConnection) &&
+    (value.triggerConnectionsInitialized === undefined ||
+      typeof value.triggerConnectionsInitialized === "boolean") &&
+    (value.triggers === undefined ||
+      (Array.isArray(value.triggers) &&
+        value.triggers.every(isWorkflowTrigger))) &&
     (value.trigger === undefined ||
       value.trigger === null ||
       isWorkflowTrigger(value.trigger))
@@ -356,10 +389,12 @@ function isWorkflow(value: unknown): value is Workflow {
 function isWorkflowTrigger(value: unknown): value is WorkflowTrigger {
   return (
     isRecord(value) &&
+    (value.id === undefined || typeof value.id === "string") &&
     typeof value.x === "number" &&
     Number.isFinite(value.x) &&
     typeof value.y === "number" &&
-    Number.isFinite(value.y)
+    Number.isFinite(value.y) &&
+    (value.name === undefined || typeof value.name === "string")
   );
 }
 
@@ -391,26 +426,63 @@ function isWorkflowConnection(value: unknown): value is WorkflowConnection {
   return (
     isRecord(value) &&
     typeof value.fromNodeId === "string" &&
-    typeof value.toNodeId === "string"
+    typeof value.toNodeId === "string" &&
+    (value.status === undefined ||
+      value.status === "idle" ||
+      value.status === "running")
   );
 }
 
 function resetProjectRuntimeState(project: Project): Project {
   return {
     ...project,
-    workflows: project.workflows.map((workflow) => ({
-      ...workflow,
-      connections: workflow.connections.map((connection) => ({
+    workflows: project.workflows.map((workflow) => {
+      const savedTriggers =
+        workflow.triggers ??
+        (workflow.trigger ? [workflow.trigger] : []);
+      const triggers = savedTriggers.map((trigger, triggerIndex) => ({
+        ...trigger,
+        id: trigger.id || `manual-trigger-${triggerIndex + 1}`,
+        name: trigger.name?.trim() || "Manual trigger",
+      }));
+      const connections = workflow.connections.map((connection) => ({
         ...connection,
-      })),
-      nodes: workflow.nodes.map((node) => ({
-        ...node,
-        input: undefined,
-        output: undefined,
-        status: "idle",
-      })),
-      trigger: workflow.trigger ? { ...workflow.trigger } : workflow.trigger,
-    })),
+        status: undefined,
+      }));
+      const entryNode = [...workflow.nodes].sort(
+        (first, second) => first.x - second.x,
+      )[0];
+
+      if (workflow.triggerConnectionsInitialized !== true && entryNode) {
+        for (const trigger of triggers) {
+          if (
+            !connections.some(
+              (connection) => connection.fromNodeId === trigger.id,
+            )
+          ) {
+            connections.push({
+              fromNodeId: trigger.id,
+              status: undefined,
+              toNodeId: entryNode.id,
+            });
+          }
+        }
+      }
+
+      return {
+        ...workflow,
+        connections,
+        nodes: workflow.nodes.map((node) => ({
+          ...node,
+          input: undefined,
+          output: undefined,
+          status: "idle",
+        })),
+        trigger: undefined,
+        triggerConnectionsInitialized: true,
+        triggers,
+      };
+    }),
   };
 }
 

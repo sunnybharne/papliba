@@ -31,10 +31,13 @@ export type WorkflowNode = {
 
 export type WorkflowConnection = {
   fromNodeId: string;
+  status?: "idle" | "running";
   toNodeId: string;
 };
 
 export type WorkflowTrigger = {
+  id: string;
+  name?: string;
   x: number;
   y: number;
 };
@@ -43,6 +46,8 @@ export type Workflow = {
   connections: WorkflowConnection[];
   name: string;
   nodes: WorkflowNode[];
+  triggerConnectionsInitialized?: boolean;
+  triggers: WorkflowTrigger[];
   trigger?: WorkflowTrigger | null;
 };
 

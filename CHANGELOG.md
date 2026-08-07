@@ -6,6 +6,36 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-08-07
+
+### Added
+
+- Added multiple draggable, independently editable Manual Triggers per workflow.
+- Added inline renaming for Manual Triggers and Python steps.
+- Added selectable, deletable, and reconnectable workflow edges, including Manual Trigger connections.
+- Added sequential execution feedback across triggers, connections, and running nodes.
+- Added a fast, curve-aligned energy pulse that travels inside active workflow edges.
+- Added double-click access to the Python file-content preview.
+- Added Python syntax coloring to the read-only file-content preview.
+- Restored python-script as a draggable workflow canvas tool.
+- Made the Python Codex chat contextual and collapsible from the canvas.
+- Added official OpenAI, Claude Code, and Python tool icons with consistent hover feedback.
+- Added folder-based Python steps with `main.py` entry files and room for `.env`, dependencies, helper modules, and other assets.
+
+### Changed
+
+- Renamed the Codex workflow tool and node type to OpenAI.
+- Adopted OpenAI green as the company accent across workflow tools and selection states.
+- Moved the workflow Run action into each Manual Trigger as a compact play control.
+- Simplified Python details to focus on syntax-colored file content and runtime input/output.
+- Made each Python step folder the workspace root for VS Code, Cursor, Finder, terminals, and Codex.
+- Made Python step rename and trash operations preserve the complete step folder.
+
+### Fixed
+
+- Kept workflow selection states consistent across Manual Trigger and Python nodes.
+- Prevented concurrent Python file migration requests from racing while converting flat scripts into step folders.
+
 ## [0.5.0] - 2026-08-07
 
 ### Added

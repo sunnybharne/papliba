@@ -16,6 +16,7 @@ import {
   loadWorkspace,
   loadPythonScriptContent,
   openPythonScriptInApplication,
+  renamePythonScriptFile,
   saveWorkspace,
   trashPythonScriptFile,
   type PythonOpenTarget,
@@ -51,6 +52,9 @@ const maximumSidebarWidth = 380;
 const minimumSidebarWidth = 220;
 const maximumWorkflowUndoSteps = 25;
 const defaultPythonScriptName = "python-script";
+const pythonScriptNamePattern = /^[a-z0-9][a-z0-9_-]{0,59}$/;
+const workflowTriggerHandoffDelayMs = 240;
+const workflowConnectionHandoffDelayMs = 190;
 const workflowRunDelayMs = 650;
 const starterProjectName = "main";
 
@@ -79,12 +83,54 @@ function applyThemeMode(themeMode: ThemeMode) {
 }
 
 function copyWorkflow(workflow: Workflow): Workflow {
+  const triggers =
+    workflow.triggers ??
+    (workflow.trigger ? [workflow.trigger] : []);
+
   return {
     ...workflow,
-    connections: workflow.connections.map((connection) => ({ ...connection })),
+    connections: getInitializedWorkflowConnections(workflow).map(
+      (connection) => ({ ...connection }),
+    ),
     nodes: workflow.nodes.map((node) => ({ ...node })),
-    trigger: workflow.trigger ? { ...workflow.trigger } : workflow.trigger,
+    triggers: triggers.map((trigger, triggerIndex) => ({
+      ...trigger,
+      id: trigger.id || `manual-trigger-${triggerIndex + 1}`,
+    })),
+    triggerConnectionsInitialized: true,
   };
+}
+
+function getInitializedWorkflowConnections(workflow: Workflow) {
+  if (workflow.triggerConnectionsInitialized === true) {
+    return workflow.connections;
+  }
+
+  const connections = workflow.connections.map((connection) => ({
+    ...connection,
+  }));
+  const entryNode = [...workflow.nodes].sort(
+    (first, second) => first.x - second.x,
+  )[0];
+
+  if (!entryNode) {
+    return connections;
+  }
+
+  for (const trigger of workflow.triggers ?? []) {
+    if (
+      !connections.some(
+        (connection) => connection.fromNodeId === trigger.id,
+      )
+    ) {
+      connections.push({
+        fromNodeId: trigger.id,
+        toNodeId: entryNode.id,
+      });
+    }
+  }
+
+  return connections;
 }
 
 function isEditableElement(target: EventTarget | null) {
@@ -118,7 +164,7 @@ function getDefaultStepName(stepType: WorkflowNodeStepType) {
   }
 
   if (stepType === "codex") {
-    return "Codex";
+    return "OpenAI";
   }
 
   return "AI step";
@@ -130,7 +176,7 @@ function getDemoOutput(stepType: WorkflowNodeStepType, input: string) {
   }
 
   if (stepType === "codex") {
-    return `Codex completed: ${input}`;
+    return `OpenAI completed: ${input}`;
   }
 
   if (stepType === "claude-code") {
@@ -255,7 +301,10 @@ export default function Home() {
   });
   const activeWorkspaceItem =
     activeItemLevel === "workflow" && activeWorkflow
-      ? activeWorkflow
+      ? {
+          ...activeWorkflow,
+          connections: getInitializedWorkflowConnections(activeWorkflow),
+        }
       : activeProject;
   const activeWorkspaceType =
     activeItemLevel === "workflow" && activeWorkflow ? "workflow" : "project";
@@ -530,7 +579,8 @@ export default function Home() {
               connections: [],
               name: nextWorkflowName,
               nodes: [],
-              trigger: null,
+              triggerConnectionsInitialized: true,
+              triggers: [],
             },
           ],
         };
@@ -692,6 +742,16 @@ export default function Home() {
 
     updateActiveWorkflow((workflow) => ({
       ...workflow,
+      connections:
+        workflow.nodes.length === 0
+          ? [
+              ...workflow.connections,
+              ...workflow.triggers.map((trigger) => ({
+                fromNodeId: trigger.id,
+                toNodeId: nextNode.id,
+              })),
+            ]
+          : workflow.connections,
       nodes: [...workflow.nodes, nextNode],
     }));
   }
@@ -724,6 +784,78 @@ export default function Home() {
       nodeId,
       getPythonScriptName(activeWorkflow, nodeId),
     );
+  }
+
+  async function renameWorkflowPythonScript(
+    nodeId: string,
+    requestedName: string,
+  ) {
+    if (!activeProject || !activeWorkflow) {
+      return "The workflow is no longer available.";
+    }
+
+    const node = activeWorkflow.nodes.find(
+      (candidate) =>
+        candidate.id === nodeId && candidate.stepType === "python",
+    );
+
+    if (!node) {
+      return "The Python script is no longer available.";
+    }
+
+    const nextScriptName = requestedName
+      .trim()
+      .toLowerCase()
+      .replace(/\.py$/i, "");
+
+    if (!pythonScriptNamePattern.test(nextScriptName)) {
+      return "Use 1–60 lowercase letters, numbers, hyphens, or underscores.";
+    }
+
+    const nameAlreadyExists = activeWorkflow.nodes.some(
+      (candidate) =>
+        candidate.id !== nodeId &&
+        candidate.stepType === "python" &&
+        getPythonScriptName(activeWorkflow, candidate.id) === nextScriptName,
+    );
+
+    if (nameAlreadyExists) {
+      return `A Python step named ${nextScriptName} already exists in this workflow.`;
+    }
+
+    const currentScriptName = getPythonScriptName(activeWorkflow, nodeId);
+
+    if (currentScriptName !== nextScriptName) {
+      try {
+        await renamePythonScriptFile(
+          activeProject.name,
+          activeWorkflow.name,
+          nodeId,
+          currentScriptName,
+          nextScriptName,
+        );
+      } catch (error) {
+        return error instanceof Error
+          ? error.message
+          : "Could not rename Python script.";
+      }
+    }
+
+    setWorkflowUndoStack([]);
+    updateActiveWorkflow((workflow) => ({
+      ...workflow,
+      nodes: workflow.nodes.map((candidate) =>
+        candidate.id === nodeId
+          ? {
+              ...candidate,
+              name: nextScriptName,
+              scriptName: nextScriptName,
+            }
+          : candidate,
+      ),
+    }));
+
+    return "";
   }
 
   async function askWorkflowPythonScript(nodeId: string, message: string) {
@@ -771,67 +903,89 @@ export default function Home() {
     }));
   }
 
-  function moveWorkflowTrigger(x: number, y: number) {
+  function moveWorkflowTrigger(triggerId: string, x: number, y: number) {
     updateActiveWorkflow((workflow) => ({
       ...workflow,
-      trigger: { x, y },
+      triggers: workflow.triggers.map((trigger) =>
+        trigger.id === triggerId ? { ...trigger, x, y } : trigger,
+      ),
+    }));
+  }
+
+  function renameWorkflowTrigger(triggerId: string, name: string) {
+    const nextName = name.trim();
+
+    if (
+      !activeWorkflow?.triggers.some((trigger) => trigger.id === triggerId) ||
+      nextName.length === 0
+    ) {
+      return;
+    }
+
+    saveWorkflowUndoStep();
+    updateActiveWorkflow((workflow) => ({
+      ...workflow,
+      triggers: workflow.triggers.map((trigger) =>
+        trigger.id === triggerId ? { ...trigger, name: nextName } : trigger,
+      ),
     }));
   }
 
   function addWorkflowTrigger(position?: { x: number; y: number }) {
-    if (!activeWorkflow || activeWorkflow.trigger !== null) {
+    if (!activeWorkflow) {
+      return;
+    }
+
+    saveWorkflowUndoStep();
+    updateActiveWorkflow((workflow) => {
+      const triggerId = crypto.randomUUID();
+      const entryNode = [...workflow.nodes].sort(
+        (first, second) => first.x - second.x,
+      )[0];
+
+      return {
+        ...workflow,
+        connections: entryNode
+          ? [
+              ...workflow.connections,
+              { fromNodeId: triggerId, toNodeId: entryNode.id },
+            ]
+          : workflow.connections,
+        triggers: [
+          ...workflow.triggers,
+          {
+            ...defaultWorkflowTriggerPosition,
+            id: triggerId,
+            ...(position ?? {
+              x:
+                defaultWorkflowTriggerPosition.x +
+                workflow.triggers.length * 18,
+              y:
+                defaultWorkflowTriggerPosition.y +
+                workflow.triggers.length * 18,
+            }),
+          },
+        ],
+      };
+    });
+  }
+
+  function deleteWorkflowTrigger(triggerId: string) {
+    if (
+      !activeWorkflow?.triggers.some((trigger) => trigger.id === triggerId)
+    ) {
       return;
     }
 
     saveWorkflowUndoStep();
     updateActiveWorkflow((workflow) => ({
       ...workflow,
-      trigger: position ?? { ...defaultWorkflowTriggerPosition },
-    }));
-  }
-
-  function deleteWorkflowTrigger() {
-    if (!activeWorkflow || activeWorkflow.trigger === null) {
-      return;
-    }
-
-    saveWorkflowUndoStep();
-    updateActiveWorkflow((workflow) => ({
-      ...workflow,
-      trigger: null,
-    }));
-  }
-
-  function updateWorkflowNode(
-    nodeId: string,
-    updateNode: {
-      name?: string;
-      stepType?: WorkflowNodeStepType;
-    },
-  ) {
-    saveWorkflowUndoStep();
-
-    updateActiveWorkflow((workflow) => ({
-      ...workflow,
-      nodes: workflow.nodes.map((node) => {
-        if (node.id !== nodeId) {
-          return node;
-        }
-
-        const stepType = updateNode.stepType ?? node.stepType;
-
-        return {
-          ...node,
-          ...updateNode,
-          input: undefined,
-          output: undefined,
-          scriptName:
-            stepType === "python"
-              ? node.scriptName ?? getNextPythonScriptName(workflow, node.id)
-              : undefined,
-          status: "idle",
-        };
-      }),
+      connections: workflow.connections.filter(
+        (connection) => connection.fromNodeId !== triggerId,
+      ),
+      triggers: workflow.triggers.filter(
+        (trigger) => trigger.id !== triggerId,
+      ),
     }));
   }
 
@@ -885,8 +1039,16 @@ export default function Home() {
     return true;
   }
 
-  async function runWorkflowDemo() {
+  async function runWorkflowDemo(triggerId: string) {
     if (!activeWorkflow || activeWorkflow.nodes.length === 0 || isWorkflowRunning) {
+      return;
+    }
+
+    const trigger = activeWorkflow.triggers.find(
+      (candidate) => candidate.id === triggerId,
+    );
+
+    if (!trigger) {
       return;
     }
 
@@ -896,10 +1058,56 @@ export default function Home() {
     const orderedNodes = [...activeWorkflow.nodes].sort((firstNode, secondNode) => {
       return firstNode.x - secondNode.x;
     });
-    let previousOutput = "Manual trigger started the workflow.";
+    const workflowConnections =
+      getInitializedWorkflowConnections(activeWorkflow);
+    let previousOutput = `${trigger.name?.trim() || "Manual trigger"} started the workflow.`;
+
+    async function animateConnection(fromNodeId: string, toNodeId: string) {
+      const connectionExists = workflowConnections.some((connection) => {
+        return (
+          connection.fromNodeId === fromNodeId &&
+          connection.toNodeId === toNodeId
+        );
+      });
+
+      if (!connectionExists) {
+        return;
+      }
+
+      updateActiveWorkflow((workflow) => ({
+        ...workflow,
+        connections: getInitializedWorkflowConnections(workflow).map(
+          (connection) => ({
+            ...connection,
+            status:
+              connection.fromNodeId === fromNodeId &&
+              connection.toNodeId === toNodeId
+                ? "running"
+                : undefined,
+          }),
+        ),
+        triggerConnectionsInitialized: true,
+      }));
+
+      await wait(workflowConnectionHandoffDelayMs);
+
+      updateActiveWorkflow((workflow) => ({
+        ...workflow,
+        connections: workflow.connections.map((connection) => ({
+          ...connection,
+          status: undefined,
+        })),
+      }));
+    }
 
     updateActiveWorkflow((workflow) => ({
       ...workflow,
+      connections: getInitializedWorkflowConnections(workflow).map(
+        (connection) => ({
+          ...connection,
+          status: undefined,
+        }),
+      ),
       nodes: workflow.nodes.map((node) => ({
         ...node,
         input: undefined,
@@ -908,7 +1116,14 @@ export default function Home() {
       })),
     }));
 
-    for (const node of orderedNodes) {
+    await wait(workflowTriggerHandoffDelayMs);
+    await animateConnection(triggerId, orderedNodes[0].id);
+
+    for (const [nodeIndex, node] of orderedNodes.entries()) {
+      if (nodeIndex > 0) {
+        await animateConnection(orderedNodes[nodeIndex - 1].id, node.id);
+      }
+
       updateActiveWorkflow((workflow) => ({
         ...workflow,
         nodes: workflow.nodes.map((currentNode) => {
@@ -947,6 +1162,13 @@ export default function Home() {
       previousOutput = nextOutput;
     }
 
+    updateActiveWorkflow((workflow) => ({
+      ...workflow,
+      connections: workflow.connections.map((connection) => ({
+        ...connection,
+        status: undefined,
+      })),
+    }));
     setIsWorkflowRunning(false);
   }
 
@@ -955,7 +1177,9 @@ export default function Home() {
       return;
     }
 
-    const alreadyConnected = activeWorkflow.connections.some((connection) => {
+    const initializedConnections =
+      getInitializedWorkflowConnections(activeWorkflow);
+    const alreadyConnected = initializedConnections.some((connection) => {
       return (
         connection.fromNodeId === fromNodeId &&
         connection.toNodeId === toNodeId
@@ -971,9 +1195,45 @@ export default function Home() {
     updateActiveWorkflow((workflow) => {
       return {
         ...workflow,
-        connections: [...workflow.connections, { fromNodeId, toNodeId }],
+        connections: [
+          ...getInitializedWorkflowConnections(workflow),
+          { fromNodeId, toNodeId },
+        ],
+        triggerConnectionsInitialized: true,
       };
     });
+  }
+
+  function deleteWorkflowConnection(
+    fromNodeId: string,
+    toNodeId: string,
+  ) {
+    if (!activeWorkflow) {
+      return;
+    }
+
+    const initializedConnections =
+      getInitializedWorkflowConnections(activeWorkflow);
+    const connectionExists = initializedConnections.some(
+      (connection) =>
+        connection.fromNodeId === fromNodeId &&
+        connection.toNodeId === toNodeId,
+    );
+
+    if (!connectionExists) {
+      return;
+    }
+
+    saveWorkflowUndoStep();
+    updateActiveWorkflow((workflow) => ({
+      ...workflow,
+      connections: getInitializedWorkflowConnections(workflow).filter(
+        (connection) =>
+          connection.fromNodeId !== fromNodeId ||
+          connection.toNodeId !== toNodeId,
+      ),
+      triggerConnectionsInitialized: true,
+    }));
   }
 
   function deleteProject(projectName: string) {
@@ -1230,12 +1490,15 @@ export default function Home() {
           onAskPythonScriptCode={askWorkflowPythonScript}
           onBackToProject={backToProject}
           onConnectWorkflowNodes={connectWorkflowNodes}
+          onDeleteWorkflowConnection={deleteWorkflowConnection}
           onCreateWorkflow={openWorkflowDialog}
           onOpenDeleteWorkflowDialog={openDeleteWorkflowDialog}
           onDeleteWorkflowNodes={deleteWorkflowNodes}
           onDeleteWorkflowTrigger={deleteWorkflowTrigger}
           onMoveWorkflowNode={moveWorkflowNode}
           onMoveWorkflowTrigger={moveWorkflowTrigger}
+          onRenameWorkflowPythonScript={renameWorkflowPythonScript}
+          onRenameWorkflowTrigger={renameWorkflowTrigger}
           onLoadPythonScript={loadWorkflowPythonScript}
           onOpenPythonScript={openWorkflowPythonScript}
           onRenameWorkflow={renameWorkflow}
@@ -1243,7 +1506,6 @@ export default function Home() {
           onSelectWorkflow={selectWorkflow}
           onStartWorkflowNodeMove={startWorkflowNodeMove}
           onUndoWorkflowEdit={undoWorkflowEdit}
-          onUpdateWorkflowNode={updateWorkflowNode}
           workspaceSaveStatus={workspaceSaveStatus}
         />
       </section>

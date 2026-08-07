@@ -20,12 +20,12 @@ Papliba now includes a functional local workflow-building foundation:
 - draggable workflow triggers and agent nodes
 - drag-and-drop node connections and multi-node marquee selection
 - workflow renaming, deletion, undo, and autosave
-- project/workflow-scoped Python script files
+- project/workflow-scoped Python step folders with a `main.py` entry file
 - Open in support for VS Code, Cursor, Finder, Terminal, Ghostty, and Xcode
 - a Codex-powered Python script assistant with browser authentication
 - local-first ASP.NET Core runner APIs
 
-Version 0.5.0 remains an early product iteration. Workflow execution is still a frontend demonstration while the durable editing, file-management, and local-runner foundations are developed.
+Version 0.6.0 remains an early product iteration. Workflow execution is still a frontend demonstration while the durable editing, file-management, and local-runner foundations are developed.
 
 The web frontend uses Next.js + React + TypeScript. The local runner uses ASP.NET Core + SQLite.
 

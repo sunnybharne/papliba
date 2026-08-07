@@ -61,6 +61,7 @@ await InitializeDatabase(connectionString);
 
 var app = builder.Build();
 var codexLoginLock = new object();
+var pythonScriptFileLock = new SemaphoreSlim(1, 1);
 Process? codexLoginProcess = null;
 
 app.UseCors();
@@ -295,7 +296,6 @@ app.MapPost("/api/python-scripts/open", async (OpenPythonScriptRequest request) 
         return Results.BadRequest(new ErrorResponse("Unsupported application target."));
     }
 
-    var workflowDirectory = Path.Combine(projectsDirectory, request.ProjectName, request.WorkflowName);
     var scriptPath = await EnsurePythonScriptFile(
         projectsDirectory,
         legacyScriptsDirectory,
@@ -305,9 +305,10 @@ app.MapPost("/api/python-scripts/open", async (OpenPythonScriptRequest request) 
         request.NodeId,
         scriptName
     );
+    var scriptDirectory = Path.GetDirectoryName(scriptPath)!;
 
     var openError = await OpenPythonScript(
-        workflowDirectory,
+        scriptDirectory,
         scriptPath,
         openTarget,
         builder.Configuration["PAPLIBA_VSCODE_COMMAND"]
@@ -362,6 +363,62 @@ app.MapPost("/api/python-scripts/content", async (OpenPythonScriptRequest reques
     ));
 });
 
+app.MapPost("/api/python-scripts/rename", async (RenamePythonScriptRequest request) =>
+{
+    var currentScriptName = GetScriptName(request.NodeId, request.ScriptName);
+    var nextScriptName = request.NextScriptName.Trim();
+
+    if (
+        !IsValidPythonScriptRequest(
+            request.ProjectName,
+            request.WorkflowName,
+            request.NodeId,
+            currentScriptName
+        )
+        || !IsSafePathSegment(nextScriptName)
+    )
+    {
+        return Results.BadRequest(new ErrorResponse("Invalid Python script name."));
+    }
+
+    var currentPath = await EnsurePythonScriptFile(
+        projectsDirectory,
+        legacyScriptsDirectory,
+        trashDirectory,
+        request.ProjectName,
+        request.WorkflowName,
+        request.NodeId,
+        currentScriptName
+    );
+    var currentDirectory = Path.GetDirectoryName(currentPath)!;
+    var nextDirectory = Path.Combine(
+        projectsDirectory,
+        request.ProjectName,
+        request.WorkflowName,
+        "python-scripts",
+        nextScriptName
+    );
+    var nextPath = Path.Combine(nextDirectory, "main.py");
+
+    if (string.Equals(currentDirectory, nextDirectory, StringComparison.Ordinal))
+    {
+        return Results.Ok(new PythonScriptResponse(currentPath));
+    }
+
+    if (
+        Directory.Exists(nextDirectory)
+        || File.Exists($"{nextDirectory}.py")
+    )
+    {
+        return Results.Conflict(
+            new ErrorResponse($"A Python step named {nextScriptName} already exists.")
+        );
+    }
+
+    Directory.Move(currentDirectory, nextDirectory);
+    return Results.Ok(new PythonScriptResponse(nextPath));
+});
+
 app.MapPost("/api/python-scripts/trash", (OpenPythonScriptRequest request) =>
 {
     var scriptName = GetScriptName(request.NodeId, request.ScriptName);
@@ -376,13 +433,14 @@ app.MapPost("/api/python-scripts/trash", (OpenPythonScriptRequest request) =>
         return Results.BadRequest(new ErrorResponse("Invalid Python script identifier."));
     }
 
-    var scriptPath = Path.Combine(
+    var workflowScriptsDirectory = Path.Combine(
         projectsDirectory,
         request.ProjectName,
         request.WorkflowName,
-        "python-scripts",
-        $"{scriptName}.py"
+        "python-scripts"
     );
+    var scriptDirectory = Path.Combine(workflowScriptsDirectory, scriptName);
+    var scriptPath = Path.Combine(workflowScriptsDirectory, $"{scriptName}.py");
     var nodeIdScriptPath = Path.Combine(
         projectsDirectory,
         request.ProjectName,
@@ -400,11 +458,11 @@ app.MapPost("/api/python-scripts/trash", (OpenPythonScriptRequest request) =>
         ? scriptPath
         : File.Exists(nodeIdScriptPath)
             ? nodeIdScriptPath
-        : File.Exists(legacyScriptPath)
-            ? legacyScriptPath
-            : null;
+            : File.Exists(legacyScriptPath)
+                ? legacyScriptPath
+                : null;
 
-    if (sourcePath is null)
+    if (!Directory.Exists(scriptDirectory) && sourcePath is null)
     {
         return Results.Ok(new PythonScriptTrashResponse(false, null));
     }
@@ -418,9 +476,18 @@ app.MapPost("/api/python-scripts/trash", (OpenPythonScriptRequest request) =>
     );
     Directory.CreateDirectory(trashedScriptsDirectory);
 
-    var trashName = $"{DateTimeOffset.UtcNow:yyyyMMddHHmmssfff}-{scriptName}.py";
+    var trashName = $"{DateTimeOffset.UtcNow:yyyyMMddHHmmssfff}-{scriptName}";
     var trashPath = Path.Combine(trashedScriptsDirectory, trashName);
-    File.Move(sourcePath, trashPath);
+
+    if (Directory.Exists(scriptDirectory))
+    {
+        Directory.Move(scriptDirectory, trashPath);
+    }
+    else
+    {
+        Directory.CreateDirectory(trashPath);
+        File.Move(sourcePath!, Path.Combine(trashPath, "main.py"));
+    }
 
     return Results.Ok(new PythonScriptTrashResponse(true, trashPath));
 });
@@ -467,7 +534,6 @@ app.MapPost("/api/python-scripts/chat", async (PythonScriptChatRequest request) 
         }
     }
 
-    var workflowDirectory = Path.Combine(projectsDirectory, request.ProjectName, request.WorkflowName);
     var scriptPath = await EnsurePythonScriptFile(
         projectsDirectory,
         legacyScriptsDirectory,
@@ -477,11 +543,12 @@ app.MapPost("/api/python-scripts/chat", async (PythonScriptChatRequest request) 
         request.NodeId,
         scriptName
     );
+    var scriptDirectory = Path.GetDirectoryName(scriptPath)!;
     var currentCode = await File.ReadAllTextAsync(scriptPath);
     var prompt = BuildPythonEditPrompt(scriptName, currentCode, request.Message);
     var aiCommand = configuredAiCommand
         ?? "codex exec --skip-git-repo-check --sandbox read-only -";
-    var aiResult = await AskLocalAiCommand(aiCommand, workflowDirectory, prompt);
+    var aiResult = await AskLocalAiCommand(aiCommand, scriptDirectory, prompt);
 
     if (!aiResult.IsSuccess)
     {
@@ -570,7 +637,7 @@ static bool IsSafePathSegment(string value)
         );
 }
 
-static async Task<string> EnsurePythonScriptFile(
+async Task<string> EnsurePythonScriptFile(
     string projectsDirectory,
     string legacyScriptsDirectory,
     string trashDirectory,
@@ -580,6 +647,10 @@ static async Task<string> EnsurePythonScriptFile(
     string scriptName
 )
 {
+    await pythonScriptFileLock.WaitAsync();
+
+    try
+    {
     var workflowScriptsDirectory = Path.Combine(
         projectsDirectory,
         projectName,
@@ -588,7 +659,9 @@ static async Task<string> EnsurePythonScriptFile(
     );
     Directory.CreateDirectory(workflowScriptsDirectory);
 
-    var scriptPath = Path.Combine(workflowScriptsDirectory, $"{scriptName}.py");
+    var scriptDirectory = Path.Combine(workflowScriptsDirectory, scriptName);
+    var scriptPath = Path.Combine(scriptDirectory, "main.py");
+    var flatScriptPath = Path.Combine(workflowScriptsDirectory, $"{scriptName}.py");
     var nodeIdScriptPath = Path.Combine(workflowScriptsDirectory, $"{nodeId}.py");
     var legacyScriptPath = Path.Combine(
         legacyScriptsDirectory,
@@ -599,16 +672,53 @@ static async Task<string> EnsurePythonScriptFile(
 
     if (
         !File.Exists(scriptPath)
-        && !string.Equals(scriptPath, nodeIdScriptPath, StringComparison.Ordinal)
+        && File.Exists(flatScriptPath)
+    )
+    {
+        Directory.CreateDirectory(scriptDirectory);
+        File.Move(flatScriptPath, scriptPath);
+    }
+
+    if (
+        !File.Exists(scriptPath)
+        && !string.Equals(flatScriptPath, nodeIdScriptPath, StringComparison.Ordinal)
         && File.Exists(nodeIdScriptPath)
     )
     {
+        Directory.CreateDirectory(scriptDirectory);
         File.Move(nodeIdScriptPath, scriptPath);
     }
 
     if (!File.Exists(scriptPath) && File.Exists(legacyScriptPath))
     {
+        Directory.CreateDirectory(scriptDirectory);
         File.Move(legacyScriptPath, scriptPath);
+    }
+
+    if (!File.Exists(scriptPath) && !Directory.Exists(scriptDirectory))
+    {
+        var trashedScriptsDirectory = Path.Combine(
+            trashDirectory,
+            "projects",
+            projectName,
+            workflowName,
+            "python-scripts"
+        );
+        var trashedScriptDirectory = Directory.Exists(trashedScriptsDirectory)
+            ? Directory
+                .EnumerateDirectories(trashedScriptsDirectory, $"*-{scriptName}")
+                .Concat(Directory.EnumerateDirectories(
+                    trashedScriptsDirectory,
+                    $"*-{nodeId}"
+                ))
+                .OrderDescending()
+                .FirstOrDefault()
+            : null;
+
+        if (trashedScriptDirectory is not null)
+        {
+            Directory.Move(trashedScriptDirectory, scriptDirectory);
+        }
     }
 
     if (!File.Exists(scriptPath))
@@ -633,16 +743,23 @@ static async Task<string> EnsurePythonScriptFile(
 
         if (trashedScriptPath is not null)
         {
+            Directory.CreateDirectory(scriptDirectory);
             File.Move(trashedScriptPath, scriptPath);
         }
     }
 
     if (!File.Exists(scriptPath))
     {
+        Directory.CreateDirectory(scriptDirectory);
         await File.WriteAllTextAsync(scriptPath, GetDefaultPythonScript());
     }
 
-    return scriptPath;
+        return scriptPath;
+    }
+    finally
+    {
+        pythonScriptFileLock.Release();
+    }
 }
 
 static string GetDefaultPythonScript()
@@ -665,7 +782,8 @@ static string BuildPythonEditPrompt(
     return $$"""
         You are editing a local Papliba Python workflow script.
 
-        File name: {{scriptName}}.py
+        Step folder: {{scriptName}}
+        Entry file: main.py
 
         Rules:
         - Return only the complete Python file content.
@@ -954,7 +1072,7 @@ static string ExtractPythonCode(string response)
 }
 
 static async Task<string?> OpenPythonScript(
-    string workflowDirectory,
+    string workspaceDirectory,
     string scriptPath,
     string openTarget,
     string? configuredVisualStudioCodeCommand
@@ -985,7 +1103,7 @@ static async Task<string?> OpenPythonScript(
         )
         {
             startInfo.FileName = configuredVisualStudioCodeCommand;
-            startInfo.ArgumentList.Add(workflowDirectory);
+            startInfo.ArgumentList.Add(workspaceDirectory);
             startInfo.ArgumentList.Add(scriptPath);
         }
         else if (OperatingSystem.IsMacOS())
@@ -999,7 +1117,7 @@ static async Task<string?> OpenPythonScript(
                 {
                     startInfo.FileName = visualStudioCodeCommand;
                     startInfo.ArgumentList.Add("--reuse-window");
-                    startInfo.ArgumentList.Add(workflowDirectory);
+                    startInfo.ArgumentList.Add(workspaceDirectory);
                     startInfo.ArgumentList.Add(scriptPath);
                 }
                 else
@@ -1007,7 +1125,7 @@ static async Task<string?> OpenPythonScript(
                     AddMacOpenApplicationArguments(
                         startInfo,
                         "Visual Studio Code",
-                        workflowDirectory,
+                        workspaceDirectory,
                         scriptPath
                     );
                 }
@@ -1021,7 +1139,7 @@ static async Task<string?> OpenPythonScript(
                 {
                     startInfo.FileName = cursorCommand;
                     startInfo.ArgumentList.Add("--reuse-window");
-                    startInfo.ArgumentList.Add(workflowDirectory);
+                    startInfo.ArgumentList.Add(workspaceDirectory);
                     startInfo.ArgumentList.Add(scriptPath);
                 }
                 else
@@ -1029,7 +1147,7 @@ static async Task<string?> OpenPythonScript(
                     AddMacOpenApplicationArguments(
                         startInfo,
                         "Cursor",
-                        workflowDirectory,
+                        workspaceDirectory,
                         scriptPath
                     );
                 }
@@ -1038,7 +1156,7 @@ static async Task<string?> OpenPythonScript(
             {
                 startInfo.FileName = "open";
                 startInfo.ArgumentList.Add("-R");
-                startInfo.ArgumentList.Add(scriptPath);
+                startInfo.ArgumentList.Add(workspaceDirectory);
             }
             else if (openTarget == "ghostty")
             {
@@ -1046,14 +1164,14 @@ static async Task<string?> OpenPythonScript(
                 startInfo.ArgumentList.Add("-a");
                 startInfo.ArgumentList.Add("Ghostty");
                 startInfo.ArgumentList.Add("--args");
-                startInfo.ArgumentList.Add($"--working-directory={workflowDirectory}");
+                startInfo.ArgumentList.Add($"--working-directory={workspaceDirectory}");
             }
             else
             {
                 AddMacOpenApplicationArguments(
                     startInfo,
                     targetLabel,
-                    openTarget == "terminal" ? workflowDirectory : scriptPath
+                    openTarget == "terminal" ? workspaceDirectory : scriptPath
                 );
             }
         }
@@ -1064,14 +1182,16 @@ static async Task<string?> OpenPythonScript(
                 ? $"{command}.cmd"
                 : command;
             startInfo.ArgumentList.Add("--reuse-window");
-            startInfo.ArgumentList.Add(workflowDirectory);
+            startInfo.ArgumentList.Add(workspaceDirectory);
             startInfo.ArgumentList.Add(scriptPath);
         }
         else if (openTarget == "finder")
         {
             startInfo.FileName = OperatingSystem.IsWindows() ? "explorer.exe" : "xdg-open";
             startInfo.ArgumentList.Add(
-                OperatingSystem.IsWindows() ? $"/select,{scriptPath}" : workflowDirectory
+                OperatingSystem.IsWindows()
+                    ? $"/select,{workspaceDirectory}"
+                    : workspaceDirectory
             );
         }
         else
@@ -1159,6 +1279,14 @@ record OpenPythonScriptRequest(
     string NodeId,
     string? ScriptName,
     string? Target
+);
+
+record RenamePythonScriptRequest(
+    string ProjectName,
+    string WorkflowName,
+    string NodeId,
+    string? ScriptName,
+    string NextScriptName
 );
 
 record PythonScriptResponse(string Path);
