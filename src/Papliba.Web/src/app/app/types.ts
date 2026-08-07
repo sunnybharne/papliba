@@ -18,6 +18,7 @@ export type WorkflowNode = {
   kind: "rectangle";
   name: string;
   output?: string;
+  scriptName?: string;
   status: WorkflowNodeStatus;
   stepType: WorkflowNodeStepType;
   x: number;

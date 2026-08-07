@@ -19,6 +19,9 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 - Added persistent Python files with an Open in VS Code action on Python nodes.
 - Organized Python files by project and workflow with automatic legacy migration.
 - Move Python files to recoverable trash when their workflow nodes are deleted.
+- Named new Python script files with the `python-script.py` format.
+- Added a right-side Codex-style Python script assistant panel.
+- Added review-first apply flow for AI-generated Python script changes.
 
 ### Changed
 

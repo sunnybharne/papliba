@@ -82,9 +82,10 @@ export async function openPythonScriptInVsCode(
   projectName: string,
   workflowName: string,
   nodeId: string,
+  scriptName: string,
 ) {
   const response = await fetch(`${runnerBaseUrl}/api/python-scripts/open`, {
-    body: JSON.stringify({ projectName, workflowName, nodeId }),
+    body: JSON.stringify({ projectName, workflowName, nodeId, scriptName }),
     headers: {
       "Content-Type": "application/json",
     },
@@ -106,9 +107,10 @@ export async function trashPythonScriptFile(
   projectName: string,
   workflowName: string,
   nodeId: string,
+  scriptName: string,
 ) {
   const response = await fetch(`${runnerBaseUrl}/api/python-scripts/trash`, {
-    body: JSON.stringify({ projectName, workflowName, nodeId }),
+    body: JSON.stringify({ projectName, workflowName, nodeId, scriptName }),
     headers: {
       "Content-Type": "application/json",
     },
@@ -123,6 +125,68 @@ export async function trashPythonScriptFile(
         : `Could not remove Python script (${response.status}).`;
 
     throw new Error(message);
+  }
+}
+
+export async function askPythonScriptChat(
+  projectName: string,
+  workflowName: string,
+  nodeId: string,
+  scriptName: string,
+  message: string,
+) {
+  const response = await fetch(`${runnerBaseUrl}/api/python-scripts/chat`, {
+    body: JSON.stringify({
+      message,
+      nodeId,
+      projectName,
+      scriptName,
+      workflowName,
+    }),
+    headers: {
+      "Content-Type": "application/json",
+    },
+    method: "POST",
+  });
+
+  if (!response.ok) {
+    throw new Error(await getApiErrorMessage(response, "Could not ask AI."));
+  }
+
+  const body: unknown = await response.json();
+
+  if (!isRecord(body) || typeof body.code !== "string") {
+    throw new Error("Runner returned an invalid AI response.");
+  }
+
+  return body.code;
+}
+
+export async function applyPythonScriptCode(
+  projectName: string,
+  workflowName: string,
+  nodeId: string,
+  scriptName: string,
+  code: string,
+) {
+  const response = await fetch(`${runnerBaseUrl}/api/python-scripts/apply`, {
+    body: JSON.stringify({
+      code,
+      nodeId,
+      projectName,
+      scriptName,
+      workflowName,
+    }),
+    headers: {
+      "Content-Type": "application/json",
+    },
+    method: "POST",
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      await getApiErrorMessage(response, "Could not update Python script."),
+    );
   }
 }
 
@@ -234,7 +298,8 @@ function isWorkflowNode(value: unknown): value is WorkflowNode {
     typeof value.y === "number" &&
     Number.isFinite(value.y) &&
     (value.input === undefined || typeof value.input === "string") &&
-    (value.output === undefined || typeof value.output === "string")
+    (value.output === undefined || typeof value.output === "string") &&
+    (value.scriptName === undefined || typeof value.scriptName === "string")
   );
 }
 
@@ -263,6 +328,16 @@ function resetProjectRuntimeState(project: Project): Project {
       trigger: workflow.trigger ? { ...workflow.trigger } : workflow.trigger,
     })),
   };
+}
+
+async function getApiErrorMessage(response: Response, fallback: string) {
+  const body: unknown = await response.json().catch(() => null);
+
+  if (isRecord(body) && typeof body.error === "string") {
+    return body.error;
+  }
+
+  return `${fallback} (${response.status}).`;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

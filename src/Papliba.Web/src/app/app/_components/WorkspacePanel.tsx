@@ -3,6 +3,7 @@ import {
   useRef,
   useState,
   type DragEvent,
+  type FormEvent,
   type KeyboardEvent,
   type PointerEvent as ReactPointerEvent,
 } from "react";
@@ -39,6 +40,8 @@ type WorkspacePanelProps = {
     stepType?: WorkflowNodeStepType,
   ) => void;
   onAddWorkflowTrigger: () => void;
+  onApplyPythonScriptCode: (nodeId: string, code: string) => Promise<void>;
+  onAskPythonScriptCode: (nodeId: string, message: string) => Promise<string>;
   onBackToProject: () => void;
   onConnectWorkflowNodes: (fromNodeId: string, toNodeId: string) => void;
   onCreateWorkflow: () => void;
@@ -68,6 +71,8 @@ export function WorkspacePanel({
   isWorkflowRunning,
   onAddWorkflowNode,
   onAddWorkflowTrigger,
+  onApplyPythonScriptCode,
+  onAskPythonScriptCode,
   onBackToProject,
   onConnectWorkflowNodes,
   onCreateWorkflow,
@@ -113,6 +118,8 @@ export function WorkspacePanel({
             }
             onAddNode={onAddWorkflowNode}
             onAddTrigger={onAddWorkflowTrigger}
+            onApplyPythonScriptCode={onApplyPythonScriptCode}
+            onAskPythonScriptCode={onAskPythonScriptCode}
             onConnectNodes={onConnectWorkflowNodes}
             onDeleteNode={onDeleteWorkflowNode}
             onDeleteTrigger={onDeleteWorkflowTrigger}
@@ -408,6 +415,8 @@ type WorkflowCanvasProps = {
     stepType?: WorkflowNodeStepType,
   ) => void;
   onAddTrigger: () => void;
+  onApplyPythonScriptCode: (nodeId: string, code: string) => Promise<void>;
+  onAskPythonScriptCode: (nodeId: string, message: string) => Promise<string>;
   onConnectNodes: (fromNodeId: string, toNodeId: string) => void;
   onDeleteNode: (nodeId: string) => void;
   onDeleteTrigger: () => void;
@@ -431,6 +440,8 @@ function WorkflowCanvas({
   trigger,
   onAddNode,
   onAddTrigger,
+  onApplyPythonScriptCode,
+  onAskPythonScriptCode,
   onConnectNodes,
   onDeleteNode,
   onDeleteTrigger,
@@ -570,71 +581,79 @@ function WorkflowCanvas({
         </button>
       </div>
 
-      <div
-        className="workflow-canvas"
-        onDragOver={allowDrop}
-        onDrop={dropNode}
-        onPointerDown={clearNodeSelection}
-        ref={canvasRef}
-      >
-        <svg aria-hidden="true" className="workflow-connections">
-          {firstNode && trigger && (
-            <path
-              className="workflow-trigger-connection"
-              d={getTriggerConnectionPath(firstNode, trigger)}
+      <div className="workflow-canvas-layout">
+        <div
+          className="workflow-canvas"
+          onDragOver={allowDrop}
+          onDrop={dropNode}
+          onPointerDown={clearNodeSelection}
+          ref={canvasRef}
+        >
+          <svg aria-hidden="true" className="workflow-connections">
+            {firstNode && trigger && (
+              <path
+                className="workflow-trigger-connection"
+                d={getTriggerConnectionPath(firstNode, trigger)}
+              />
+            )}
+            {connections.map((connection) => {
+              const path = getConnectionPath(connection, nodes);
+
+              if (!path) {
+                return null;
+              }
+
+              return (
+                <path
+                  d={path}
+                  key={`${connection.fromNodeId}-${connection.toNodeId}`}
+                />
+              );
+            })}
+          </svg>
+
+          {trigger && (
+            <WorkflowTriggerBlock
+              isRunning={isRunning}
+              onDelete={onDeleteTrigger}
+              onMove={onMoveTrigger}
+              onStartMove={onStartNodeMove}
+              trigger={trigger}
             />
           )}
-          {connections.map((connection) => {
-            const path = getConnectionPath(connection, nodes);
 
-            if (!path) {
-              return null;
-            }
+          {nodes.map((node) => (
+            <WorkflowNodeView
+              connectingFromNodeId={connectingFromNodeId}
+              isOpen={openNodeId === node.id}
+              key={node.id}
+              node={node}
+              onDelete={onDeleteNode}
+              onFinishConnection={finishConnection}
+              onMoveNode={onMoveNode}
+              onOpen={setOpenNodeId}
+              onOpenPythonScript={onOpenPythonScript}
+              onStartMove={onStartNodeMove}
+              onStartConnection={startConnection}
+            />
+          ))}
 
-            return (
-              <path
-                d={path}
-                key={`${connection.fromNodeId}-${connection.toNodeId}`}
-              />
-            );
-          })}
-        </svg>
+          {openNode && (
+            <WorkflowNodePanel
+              node={openNode}
+              onClose={() => setOpenNodeId("")}
+              onUpdate={onUpdateNode}
+            />
+          )}
 
-        {trigger && (
-          <WorkflowTriggerBlock
-            isRunning={isRunning}
-            onDelete={onDeleteTrigger}
-            onMove={onMoveTrigger}
-            onStartMove={onStartNodeMove}
-            trigger={trigger}
-          />
-        )}
+          {nodes.length === 0 && <div className="workflow-canvas-empty" />}
+        </div>
 
-        {nodes.map((node) => (
-          <WorkflowNodeView
-            connectingFromNodeId={connectingFromNodeId}
-            isOpen={openNodeId === node.id}
-            key={node.id}
-            node={node}
-            onDelete={onDeleteNode}
-            onFinishConnection={finishConnection}
-            onMoveNode={onMoveNode}
-            onOpen={setOpenNodeId}
-            onOpenPythonScript={onOpenPythonScript}
-            onStartMove={onStartNodeMove}
-            onStartConnection={startConnection}
-          />
-        ))}
-
-        {openNode && (
-          <WorkflowNodePanel
-            node={openNode}
-            onClose={() => setOpenNodeId("")}
-            onUpdate={onUpdateNode}
-          />
-        )}
-
-        {nodes.length === 0 && <div className="workflow-canvas-empty" />}
+        <PythonScriptChatPanel
+          node={openNode?.stepType === "python" ? openNode : undefined}
+          onApply={onApplyPythonScriptCode}
+          onAsk={onAskPythonScriptCode}
+        />
       </div>
     </section>
   );
@@ -939,6 +958,192 @@ function WorkflowNodePanel({ node, onClose, onUpdate }: WorkflowNodePanelProps) 
           )}
         </div>
       )}
+    </aside>
+  );
+}
+
+type ChatMessage = {
+  code?: string;
+  id: string;
+  isApplied?: boolean;
+  role: "user" | "assistant" | "error";
+  text: string;
+};
+
+type PythonScriptChatPanelProps = {
+  node: WorkflowNode | undefined;
+  onApply: (nodeId: string, code: string) => Promise<void>;
+  onAsk: (nodeId: string, message: string) => Promise<string>;
+};
+
+function PythonScriptChatPanel({
+  node,
+  onApply,
+  onAsk,
+}: PythonScriptChatPanelProps) {
+  const [draft, setDraft] = useState("");
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [isAsking, setIsAsking] = useState(false);
+  const [applyingMessageId, setApplyingMessageId] = useState("");
+
+  useEffect(() => {
+    setDraft("");
+    setMessages([]);
+    setIsAsking(false);
+    setApplyingMessageId("");
+  }, [node?.id]);
+
+  async function askForCode(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    const message = draft.trim();
+
+    if (!node || !message || isAsking) {
+      return;
+    }
+
+    setDraft("");
+    setIsAsking(true);
+    setMessages((currentMessages) => [
+      ...currentMessages,
+      {
+        id: `user-${Date.now()}`,
+        role: "user",
+        text: message,
+      },
+    ]);
+
+    try {
+      const code = await onAsk(node.id, message);
+
+      setMessages((currentMessages) => [
+        ...currentMessages,
+        {
+          code,
+          id: `assistant-${Date.now()}`,
+          role: "assistant",
+          text: "Review this change before applying it.",
+        },
+      ]);
+    } catch (error) {
+      setMessages((currentMessages) => [
+        ...currentMessages,
+        {
+          id: `error-${Date.now()}`,
+          role: "error",
+          text:
+            error instanceof Error
+              ? error.message
+              : "Could not get a suggestion.",
+        },
+      ]);
+    } finally {
+      setIsAsking(false);
+    }
+  }
+
+  async function applyCode(message: ChatMessage) {
+    if (!node || !message.code || message.isApplied || applyingMessageId) {
+      return;
+    }
+
+    setApplyingMessageId(message.id);
+
+    try {
+      await onApply(node.id, message.code);
+
+      setMessages((currentMessages) =>
+        currentMessages.map((currentMessage) => {
+          if (currentMessage.id !== message.id) {
+            return currentMessage;
+          }
+
+          return {
+            ...currentMessage,
+            isApplied: true,
+            text: "Applied to python-script.py.",
+          };
+        }),
+      );
+    } catch (error) {
+      setMessages((currentMessages) => [
+        ...currentMessages,
+        {
+          id: `error-${Date.now()}`,
+          role: "error",
+          text:
+            error instanceof Error
+              ? error.message
+              : "Could not update the Python script.",
+        },
+      ]);
+    } finally {
+      setApplyingMessageId("");
+    }
+  }
+
+  return (
+    <aside
+      className="workflow-chat-panel"
+      onPointerDown={(event) => event.stopPropagation()}
+    >
+      <div className="workflow-chat-header">
+        <div>
+          <strong>Codex</strong>
+          <span>{node ? `${node.scriptName ?? node.name}.py` : "No script selected"}</span>
+        </div>
+      </div>
+
+      <div className="workflow-chat-messages">
+        {!node && (
+          <p className="workflow-chat-empty">Select a Python script node.</p>
+        )}
+
+        {node && messages.length === 0 && (
+          <p className="workflow-chat-empty">Ask Codex to update this script.</p>
+        )}
+
+        {messages.map((message) => (
+          <article
+            className="workflow-chat-message"
+            data-role={message.role}
+            key={message.id}
+          >
+            <p>{message.text}</p>
+            {message.code && (
+              <>
+                <pre>{message.code}</pre>
+                <button
+                  disabled={
+                    message.isApplied || applyingMessageId === message.id
+                  }
+                  onClick={() => void applyCode(message)}
+                  type="button"
+                >
+                  {message.isApplied
+                    ? "Applied"
+                    : applyingMessageId === message.id
+                      ? "Applying"
+                      : "Apply"}
+                </button>
+              </>
+            )}
+          </article>
+        ))}
+      </div>
+
+      <form className="workflow-chat-form" onSubmit={askForCode}>
+        <textarea
+          disabled={!node || isAsking}
+          onChange={(event) => setDraft(event.target.value)}
+          placeholder="Ask Codex"
+          rows={3}
+          value={draft}
+        />
+        <button disabled={!node || !draft.trim() || isAsking} type="submit">
+          {isAsking ? "Working" : "Send"}
+        </button>
+      </form>
     </aside>
   );
 }

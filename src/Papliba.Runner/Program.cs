@@ -4,6 +4,8 @@ using Microsoft.Data.Sqlite;
 
 const string workspaceId = "default";
 const int maximumWorkspaceBytes = 2 * 1024 * 1024;
+const int maximumPythonScriptBytes = 256 * 1024;
+const int localAiTimeoutSeconds = 120;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -175,74 +177,31 @@ app.MapPut("/api/workspace", async (WorkspaceSaveRequest request) =>
 
 app.MapPost("/api/python-scripts/open", async (OpenPythonScriptRequest request) =>
 {
-    if (
-        !IsSafePathSegment(request.ProjectName)
-        || !IsSafePathSegment(request.WorkflowName)
-        || !IsSafePathSegment(request.NodeId)
-    )
+    var scriptName = GetScriptName(request.NodeId, request.ScriptName);
+
+    if (!IsValidPythonScriptRequest(
+        request.ProjectName,
+        request.WorkflowName,
+        request.NodeId,
+        scriptName
+    ))
     {
         return Results.BadRequest(new ErrorResponse("Invalid Python script identifier."));
     }
 
-    var workflowScriptsDirectory = Path.Combine(
+    var workflowDirectory = Path.Combine(projectsDirectory, request.ProjectName, request.WorkflowName);
+    var scriptPath = await EnsurePythonScriptFile(
         projectsDirectory,
-        request.ProjectName,
-        request.WorkflowName,
-        "python-scripts"
-    );
-    Directory.CreateDirectory(workflowScriptsDirectory);
-
-    var scriptPath = Path.Combine(workflowScriptsDirectory, $"{request.NodeId}.py");
-    var legacyScriptPath = Path.Combine(
         legacyScriptsDirectory,
+        trashDirectory,
         request.ProjectName,
         request.WorkflowName,
-        $"{request.NodeId}.py"
+        request.NodeId,
+        scriptName
     );
-
-    if (!File.Exists(scriptPath) && File.Exists(legacyScriptPath))
-    {
-        File.Move(legacyScriptPath, scriptPath);
-    }
-
-    if (!File.Exists(scriptPath))
-    {
-        var trashedScriptsDirectory = Path.Combine(
-            trashDirectory,
-            "projects",
-            request.ProjectName,
-            request.WorkflowName,
-            "python-scripts"
-        );
-        var trashedScriptPath = Directory.Exists(trashedScriptsDirectory)
-            ? Directory
-                .EnumerateFiles(trashedScriptsDirectory, $"*-{request.NodeId}.py")
-                .OrderDescending()
-                .FirstOrDefault()
-            : null;
-
-        if (trashedScriptPath is not null)
-        {
-            File.Move(trashedScriptPath, scriptPath);
-        }
-    }
-
-    if (!File.Exists(scriptPath))
-    {
-        await File.WriteAllTextAsync(
-            scriptPath,
-            """
-            # Papliba Python script
-
-            def main(input_data):
-                # Transform the workflow input and return the result.
-                return input_data
-            """
-        );
-    }
 
     var openError = await OpenInVisualStudioCode(
-        Path.Combine(projectsDirectory, request.ProjectName, request.WorkflowName),
+        workflowDirectory,
         scriptPath,
         builder.Configuration["PAPLIBA_VSCODE_COMMAND"]
     );
@@ -260,16 +219,26 @@ app.MapPost("/api/python-scripts/open", async (OpenPythonScriptRequest request) 
 
 app.MapPost("/api/python-scripts/trash", (OpenPythonScriptRequest request) =>
 {
-    if (
-        !IsSafePathSegment(request.ProjectName)
-        || !IsSafePathSegment(request.WorkflowName)
-        || !IsSafePathSegment(request.NodeId)
-    )
+    var scriptName = GetScriptName(request.NodeId, request.ScriptName);
+
+    if (!IsValidPythonScriptRequest(
+        request.ProjectName,
+        request.WorkflowName,
+        request.NodeId,
+        scriptName
+    ))
     {
         return Results.BadRequest(new ErrorResponse("Invalid Python script identifier."));
     }
 
     var scriptPath = Path.Combine(
+        projectsDirectory,
+        request.ProjectName,
+        request.WorkflowName,
+        "python-scripts",
+        $"{scriptName}.py"
+    );
+    var nodeIdScriptPath = Path.Combine(
         projectsDirectory,
         request.ProjectName,
         request.WorkflowName,
@@ -284,6 +253,8 @@ app.MapPost("/api/python-scripts/trash", (OpenPythonScriptRequest request) =>
     );
     var sourcePath = File.Exists(scriptPath)
         ? scriptPath
+        : File.Exists(nodeIdScriptPath)
+            ? nodeIdScriptPath
         : File.Exists(legacyScriptPath)
             ? legacyScriptPath
             : null;
@@ -302,14 +273,125 @@ app.MapPost("/api/python-scripts/trash", (OpenPythonScriptRequest request) =>
     );
     Directory.CreateDirectory(trashedScriptsDirectory);
 
-    var trashName = $"{DateTimeOffset.UtcNow:yyyyMMddHHmmssfff}-{request.NodeId}.py";
+    var trashName = $"{DateTimeOffset.UtcNow:yyyyMMddHHmmssfff}-{scriptName}.py";
     var trashPath = Path.Combine(trashedScriptsDirectory, trashName);
     File.Move(sourcePath, trashPath);
 
     return Results.Ok(new PythonScriptTrashResponse(true, trashPath));
 });
 
+app.MapPost("/api/python-scripts/chat", async (PythonScriptChatRequest request) =>
+{
+    var scriptName = GetScriptName(request.NodeId, request.ScriptName);
+
+    if (!IsValidPythonScriptRequest(
+        request.ProjectName,
+        request.WorkflowName,
+        request.NodeId,
+        scriptName
+    ))
+    {
+        return Results.BadRequest(new ErrorResponse("Invalid Python script identifier."));
+    }
+
+    if (string.IsNullOrWhiteSpace(request.Message))
+    {
+        return Results.BadRequest(new ErrorResponse("Enter a message for the chat."));
+    }
+
+    var workflowDirectory = Path.Combine(projectsDirectory, request.ProjectName, request.WorkflowName);
+    var scriptPath = await EnsurePythonScriptFile(
+        projectsDirectory,
+        legacyScriptsDirectory,
+        trashDirectory,
+        request.ProjectName,
+        request.WorkflowName,
+        request.NodeId,
+        scriptName
+    );
+    var currentCode = await File.ReadAllTextAsync(scriptPath);
+    var prompt = BuildPythonEditPrompt(scriptName, currentCode, request.Message);
+    var aiCommand = builder.Configuration["PAPLIBA_AI_COMMAND"]
+        ?? "codex exec --skip-git-repo-check --sandbox read-only -";
+    var aiResult = await AskLocalAiCommand(aiCommand, workflowDirectory, prompt);
+
+    if (!aiResult.IsSuccess)
+    {
+        return Results.Json(
+            new ErrorResponse(aiResult.Error),
+            statusCode: StatusCodes.Status503ServiceUnavailable
+        );
+    }
+
+    var code = ExtractPythonCode(aiResult.Output);
+
+    if (string.IsNullOrWhiteSpace(code))
+    {
+        return Results.Json(
+            new ErrorResponse("The local AI command did not return Python code."),
+            statusCode: StatusCodes.Status502BadGateway
+        );
+    }
+
+    return Results.Ok(new PythonScriptChatResponse(code));
+});
+
+app.MapPost("/api/python-scripts/apply", async (PythonScriptApplyRequest request) =>
+{
+    var scriptName = GetScriptName(request.NodeId, request.ScriptName);
+
+    if (!IsValidPythonScriptRequest(
+        request.ProjectName,
+        request.WorkflowName,
+        request.NodeId,
+        scriptName
+    ))
+    {
+        return Results.BadRequest(new ErrorResponse("Invalid Python script identifier."));
+    }
+
+    if (
+        string.IsNullOrWhiteSpace(request.Code)
+        || System.Text.Encoding.UTF8.GetByteCount(request.Code) > maximumPythonScriptBytes
+    )
+    {
+        return Results.BadRequest(new ErrorResponse("Invalid Python script content."));
+    }
+
+    var scriptPath = await EnsurePythonScriptFile(
+        projectsDirectory,
+        legacyScriptsDirectory,
+        trashDirectory,
+        request.ProjectName,
+        request.WorkflowName,
+        request.NodeId,
+        scriptName
+    );
+
+    await File.WriteAllTextAsync(scriptPath, request.Code.TrimEnd() + Environment.NewLine);
+
+    return Results.Ok(new PythonScriptResponse(scriptPath));
+});
+
 app.Run();
+
+static string GetScriptName(string nodeId, string? scriptName)
+{
+    return string.IsNullOrWhiteSpace(scriptName) ? nodeId : scriptName;
+}
+
+static bool IsValidPythonScriptRequest(
+    string projectName,
+    string workflowName,
+    string nodeId,
+    string scriptName
+)
+{
+    return IsSafePathSegment(projectName)
+        && IsSafePathSegment(workflowName)
+        && IsSafePathSegment(nodeId)
+        && IsSafePathSegment(scriptName);
+}
 
 static bool IsSafePathSegment(string value)
 {
@@ -318,6 +400,230 @@ static bool IsSafePathSegment(string value)
         && value.All(character =>
             char.IsAsciiLetterOrDigit(character) || character is '-' or '_'
         );
+}
+
+static async Task<string> EnsurePythonScriptFile(
+    string projectsDirectory,
+    string legacyScriptsDirectory,
+    string trashDirectory,
+    string projectName,
+    string workflowName,
+    string nodeId,
+    string scriptName
+)
+{
+    var workflowScriptsDirectory = Path.Combine(
+        projectsDirectory,
+        projectName,
+        workflowName,
+        "python-scripts"
+    );
+    Directory.CreateDirectory(workflowScriptsDirectory);
+
+    var scriptPath = Path.Combine(workflowScriptsDirectory, $"{scriptName}.py");
+    var nodeIdScriptPath = Path.Combine(workflowScriptsDirectory, $"{nodeId}.py");
+    var legacyScriptPath = Path.Combine(
+        legacyScriptsDirectory,
+        projectName,
+        workflowName,
+        $"{nodeId}.py"
+    );
+
+    if (
+        !File.Exists(scriptPath)
+        && !string.Equals(scriptPath, nodeIdScriptPath, StringComparison.Ordinal)
+        && File.Exists(nodeIdScriptPath)
+    )
+    {
+        File.Move(nodeIdScriptPath, scriptPath);
+    }
+
+    if (!File.Exists(scriptPath) && File.Exists(legacyScriptPath))
+    {
+        File.Move(legacyScriptPath, scriptPath);
+    }
+
+    if (!File.Exists(scriptPath))
+    {
+        var trashedScriptsDirectory = Path.Combine(
+            trashDirectory,
+            "projects",
+            projectName,
+            workflowName,
+            "python-scripts"
+        );
+        var trashedScriptPath = Directory.Exists(trashedScriptsDirectory)
+            ? Directory
+                .EnumerateFiles(trashedScriptsDirectory, $"*-{scriptName}.py")
+                .Concat(Directory.EnumerateFiles(
+                    trashedScriptsDirectory,
+                    $"*-{nodeId}.py"
+                ))
+                .OrderDescending()
+                .FirstOrDefault()
+            : null;
+
+        if (trashedScriptPath is not null)
+        {
+            File.Move(trashedScriptPath, scriptPath);
+        }
+    }
+
+    if (!File.Exists(scriptPath))
+    {
+        await File.WriteAllTextAsync(scriptPath, GetDefaultPythonScript());
+    }
+
+    return scriptPath;
+}
+
+static string GetDefaultPythonScript()
+{
+    return """
+        # Papliba Python script
+
+        def main(input_data):
+            # Transform the workflow input and return the result.
+            return input_data
+        """;
+}
+
+static string BuildPythonEditPrompt(
+    string scriptName,
+    string currentCode,
+    string userMessage
+)
+{
+    return $$"""
+        You are editing a local Papliba Python workflow script.
+
+        File name: {{scriptName}}.py
+
+        Rules:
+        - Return only the complete Python file content.
+        - Do not include markdown fences.
+        - Keep a main(input_data) function unless the user clearly asks otherwise.
+        - Keep the code simple and readable.
+
+        Current Python file:
+        ```python
+        {{currentCode}}
+        ```
+
+        User request:
+        {{userMessage}}
+        """;
+}
+
+static async Task<LocalAiCommandResult> AskLocalAiCommand(
+    string commandLine,
+    string workingDirectory,
+    string prompt
+)
+{
+    if (string.IsNullOrWhiteSpace(commandLine))
+    {
+        return new LocalAiCommandResult(
+            false,
+            "",
+            "Set PAPLIBA_AI_COMMAND to your logged-in AI terminal command."
+        );
+    }
+
+    try
+    {
+        var startInfo = new ProcessStartInfo
+        {
+            FileName = OperatingSystem.IsWindows() ? "cmd.exe" : "/bin/zsh",
+            WorkingDirectory = workingDirectory,
+            UseShellExecute = false,
+            RedirectStandardInput = true,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+        };
+
+        if (OperatingSystem.IsWindows())
+        {
+            startInfo.ArgumentList.Add("/c");
+        }
+        else
+        {
+            startInfo.ArgumentList.Add("-lc");
+        }
+
+        startInfo.ArgumentList.Add(commandLine);
+
+        using var process = Process.Start(startInfo);
+
+        if (process is null)
+        {
+            return new LocalAiCommandResult(false, "", "Could not start the local AI command.");
+        }
+
+        await process.StandardInput.WriteAsync(prompt);
+        process.StandardInput.Close();
+
+        var outputTask = process.StandardOutput.ReadToEndAsync();
+        var errorTask = process.StandardError.ReadToEndAsync();
+
+        using var timeout = new CancellationTokenSource(
+            TimeSpan.FromSeconds(localAiTimeoutSeconds)
+        );
+
+        try
+        {
+            await process.WaitForExitAsync(timeout.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            process.Kill(entireProcessTree: true);
+            return new LocalAiCommandResult(false, "", "The local AI command timed out.");
+        }
+
+        var output = await outputTask;
+        var error = await errorTask;
+
+        if (process.ExitCode != 0)
+        {
+            return new LocalAiCommandResult(
+                false,
+                output,
+                string.IsNullOrWhiteSpace(error)
+                    ? "The local AI command failed."
+                    : error.Trim()
+            );
+        }
+
+        return new LocalAiCommandResult(true, output, "");
+    }
+    catch (Exception exception)
+    {
+        return new LocalAiCommandResult(
+            false,
+            "",
+            $"Could not run the local AI command: {exception.Message}"
+        );
+    }
+}
+
+static string ExtractPythonCode(string response)
+{
+    var trimmed = response.Trim();
+
+    if (!trimmed.StartsWith("```", StringComparison.Ordinal))
+    {
+        return trimmed;
+    }
+
+    var firstLineBreak = trimmed.IndexOf('\n');
+    var lastFence = trimmed.LastIndexOf("```", StringComparison.Ordinal);
+
+    if (firstLineBreak < 0 || lastFence <= firstLineBreak)
+    {
+        return trimmed;
+    }
+
+    return trimmed[(firstLineBreak + 1)..lastFence].Trim();
 }
 
 static async Task<string?> OpenInVisualStudioCode(
@@ -427,11 +733,36 @@ record WorkspaceResponse(
     string UpdatedAt
 );
 
-record OpenPythonScriptRequest(string ProjectName, string WorkflowName, string NodeId);
+record OpenPythonScriptRequest(
+    string ProjectName,
+    string WorkflowName,
+    string NodeId,
+    string? ScriptName
+);
 
 record PythonScriptResponse(string Path);
 
 record PythonScriptTrashResponse(bool Trashed, string? Path);
+
+record PythonScriptChatRequest(
+    string ProjectName,
+    string WorkflowName,
+    string NodeId,
+    string? ScriptName,
+    string Message
+);
+
+record PythonScriptChatResponse(string Code);
+
+record PythonScriptApplyRequest(
+    string ProjectName,
+    string WorkflowName,
+    string NodeId,
+    string? ScriptName,
+    string Code
+);
+
+record LocalAiCommandResult(bool IsSuccess, string Output, string Error);
 
 record ErrorResponse(string Error);
 

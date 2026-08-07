@@ -10,6 +10,8 @@ import {
 } from "react";
 
 import {
+  applyPythonScriptCode,
+  askPythonScriptChat,
   createDurableWorkspace,
   loadWorkspace,
   openPythonScriptInVsCode,
@@ -46,6 +48,7 @@ const defaultSidebarWidth = 260;
 const maximumSidebarWidth = 380;
 const minimumSidebarWidth = 220;
 const maximumWorkflowUndoSteps = 25;
+const defaultPythonScriptName = "python-script";
 const workflowRunDelayMs = 650;
 const starterProjectName = "main";
 
@@ -87,7 +90,10 @@ function isEditableElement(target: EventTarget | null) {
     return false;
   }
 
-  return target.closest("input, textarea, select, [contenteditable='true']") !== null;
+  return (
+    target.closest("input, textarea, select, [contenteditable='true']") !==
+    null
+  );
 }
 
 function wait(milliseconds: number) {
@@ -101,7 +107,7 @@ function getDefaultStepType(nodeCount: number): WorkflowNodeStepType {
 }
 
 function getDefaultStepName(stepType: WorkflowNodeStepType) {
-  return stepType === "python" ? "Python script" : "AI step";
+  return stepType === "python" ? defaultPythonScriptName : "AI step";
 }
 
 function getDemoOutput(stepType: WorkflowNodeStepType, input: string) {
@@ -110,6 +116,61 @@ function getDemoOutput(stepType: WorkflowNodeStepType, input: string) {
   }
 
   return `Summary: ${input} 2 items look urgent.`;
+}
+
+function getFallbackPythonScriptName(pythonNodeIndex: number) {
+  return pythonNodeIndex === 1
+    ? defaultPythonScriptName
+    : `${defaultPythonScriptName}-${pythonNodeIndex}`;
+}
+
+function getPythonScriptName(workflow: Workflow, nodeId: string) {
+  let pythonNodeIndex = 0;
+
+  for (const node of workflow.nodes) {
+    if (node.stepType !== "python") {
+      continue;
+    }
+
+    pythonNodeIndex += 1;
+
+    if (node.id === nodeId) {
+      return node.scriptName ?? getFallbackPythonScriptName(pythonNodeIndex);
+    }
+  }
+
+  return defaultPythonScriptName;
+}
+
+function getNextPythonScriptName(workflow: Workflow, ignoredNodeId?: string) {
+  const usedNames = new Set<string>();
+  let pythonNodeIndex = 0;
+
+  for (const node of workflow.nodes) {
+    if (node.stepType !== "python") {
+      continue;
+    }
+
+    pythonNodeIndex += 1;
+
+    if (node.id !== ignoredNodeId) {
+      usedNames.add(
+        node.scriptName ?? getFallbackPythonScriptName(pythonNodeIndex),
+      );
+    }
+  }
+
+  let nextIndex = 1;
+
+  while (true) {
+    const nextName = getFallbackPythonScriptName(nextIndex);
+
+    if (!usedNames.has(nextName)) {
+      return nextName;
+    }
+
+    nextIndex += 1;
+  }
 }
 
 export default function Home() {
@@ -592,10 +653,15 @@ export default function Home() {
 
     const nodeCount = activeWorkflow.nodes.length;
     const stepType = requestedStepType ?? getDefaultStepType(nodeCount);
+    const scriptName =
+      stepType === "python"
+        ? getNextPythonScriptName(activeWorkflow)
+        : undefined;
     const nextNode = {
       id: `${stepType}-${Date.now()}-${nodeCount + 1}`,
       kind: "rectangle" as const,
       name: getDefaultStepName(stepType),
+      scriptName,
       status: "idle" as const,
       stepType,
       x: Math.max(24, position?.x ?? 230 + nodeCount * 190),
@@ -617,6 +683,35 @@ export default function Home() {
       activeProject.name,
       activeWorkflow.name,
       nodeId,
+      getPythonScriptName(activeWorkflow, nodeId),
+    );
+  }
+
+  async function askWorkflowPythonScript(nodeId: string, message: string) {
+    if (!activeProject || !activeWorkflow) {
+      throw new Error("The workflow is no longer available.");
+    }
+
+    return askPythonScriptChat(
+      activeProject.name,
+      activeWorkflow.name,
+      nodeId,
+      getPythonScriptName(activeWorkflow, nodeId),
+      message,
+    );
+  }
+
+  async function applyWorkflowPythonScript(nodeId: string, code: string) {
+    if (!activeProject || !activeWorkflow) {
+      throw new Error("The workflow is no longer available.");
+    }
+
+    await applyPythonScriptCode(
+      activeProject.name,
+      activeWorkflow.name,
+      nodeId,
+      getPythonScriptName(activeWorkflow, nodeId),
+      code,
     );
   }
 
@@ -684,11 +779,17 @@ export default function Home() {
           return node;
         }
 
+        const stepType = updateNode.stepType ?? node.stepType;
+
         return {
           ...node,
           ...updateNode,
           input: undefined,
           output: undefined,
+          scriptName:
+            stepType === "python"
+              ? node.scriptName ?? getNextPythonScriptName(workflow, node.id)
+              : undefined,
           status: "idle",
         };
       }),
@@ -714,6 +815,7 @@ export default function Home() {
           activeProject.name,
           activeWorkflow.name,
           node.id,
+          getPythonScriptName(activeWorkflow, node.id),
         );
       } catch {
         setWorkspaceSaveStatus("error");
@@ -1077,6 +1179,8 @@ export default function Home() {
           isWorkflowRunning={isWorkflowRunning}
           onAddWorkflowTrigger={addWorkflowTrigger}
           onAddWorkflowNode={addWorkflowNode}
+          onApplyPythonScriptCode={applyWorkflowPythonScript}
+          onAskPythonScriptCode={askWorkflowPythonScript}
           onBackToProject={backToProject}
           onConnectWorkflowNodes={connectWorkflowNodes}
           onCreateWorkflow={openWorkflowDialog}

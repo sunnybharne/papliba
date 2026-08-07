@@ -95,6 +95,14 @@ The web app runs at `http://127.0.0.1:3000` and the runner listens on `http://12
 
 The runner stores the workspace in the operating system's local application-data directory. Set `PAPLIBA_DATA_DIRECTORY` when you need a custom location for development or testing.
 
+The Python script assistant uses a logged-in terminal AI command through the local runner. By default the runner tries:
+
+```bash
+codex exec --skip-git-repo-check --sandbox read-only -
+```
+
+Set `PAPLIBA_AI_COMMAND` before starting the runner if you want to use another local AI CLI.
+
 ## Commit Style
 
 This project uses Conventional Commits.

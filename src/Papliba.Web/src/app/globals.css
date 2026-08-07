@@ -1141,6 +1141,13 @@ a {
   stroke-linejoin: round;
 }
 
+.workflow-canvas-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 10px;
+  min-height: 520px;
+}
+
 .workflow-canvas {
   position: relative;
   min-height: 520px;
@@ -1467,6 +1474,160 @@ a {
   stroke-width: 1.9;
   stroke-linecap: round;
   stroke-linejoin: round;
+}
+
+.workflow-chat-panel {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  min-height: 520px;
+  overflow: hidden;
+  border: 1px solid var(--border-soft);
+  border-radius: 12px;
+  background: var(--panel);
+}
+
+.workflow-chat-header {
+  display: flex;
+  min-height: 46px;
+  align-items: center;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.workflow-chat-header div {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.workflow-chat-header strong {
+  color: var(--text);
+  font-size: 0.86rem;
+  font-weight: 500;
+}
+
+.workflow-chat-header span {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.72rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workflow-chat-messages {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  overflow: auto;
+  padding: 12px;
+}
+
+.workflow-chat-empty {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+
+.workflow-chat-message {
+  display: grid;
+  gap: 8px;
+}
+
+.workflow-chat-message[data-role="user"] {
+  justify-items: end;
+}
+
+.workflow-chat-message p {
+  max-width: 100%;
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 9px;
+  color: var(--text-soft);
+  background: var(--quiet-surface);
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+
+.workflow-chat-message[data-role="user"] p {
+  background: var(--popup-active);
+}
+
+.workflow-chat-message[data-role="error"] p {
+  color: #ef4444;
+  background: color-mix(in srgb, #ef4444 10%, var(--quiet-surface));
+}
+
+.workflow-chat-message pre {
+  max-height: 220px;
+  overflow: auto;
+  margin: 0;
+  padding: 10px;
+  border-radius: 8px;
+  color: var(--text-soft);
+  background: var(--panel-deep);
+  font-family:
+    "SFMono-Regular",
+    Consolas,
+    "Liberation Mono",
+    monospace;
+  font-size: 0.72rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+
+.workflow-chat-message button,
+.workflow-chat-form button {
+  min-height: 30px;
+  width: fit-content;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 7px;
+  color: var(--text);
+  background: var(--popup-active);
+  font: inherit;
+  font-size: 0.8rem;
+}
+
+.workflow-chat-message button:hover,
+.workflow-chat-form button:hover {
+  background: var(--panel-deep);
+}
+
+.workflow-chat-message button:disabled,
+.workflow-chat-form button:disabled {
+  color: var(--muted);
+  cursor: default;
+  opacity: 0.55;
+}
+
+.workflow-chat-form {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border-top: 1px solid var(--border-soft);
+}
+
+.workflow-chat-form textarea {
+  min-height: 82px;
+  resize: none;
+  border: 1px solid var(--border-soft);
+  border-radius: 10px;
+  color: var(--text);
+  background: var(--panel-deep);
+  font: inherit;
+  font-size: 0.82rem;
+  line-height: 1.35;
+  outline: 0;
+  padding: 9px;
+}
+
+.workflow-chat-form textarea:focus {
+  border-color: color-mix(in srgb, var(--accent) 46%, var(--border));
+}
+
+.workflow-chat-form textarea::placeholder {
+  color: var(--muted);
 }
 
 .workflow-canvas-empty {
@@ -2487,6 +2648,14 @@ a {
   .content-area,
   .site-content {
     padding: 20px;
+  }
+
+  .workflow-canvas-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .workflow-chat-panel {
+    min-height: 320px;
   }
 
 }
