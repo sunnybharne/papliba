@@ -10,7 +10,11 @@ export type WorkspaceSaveStatus =
 
 export type WorkflowNodeStatus = "idle" | "running" | "done" | "error";
 
-export type WorkflowNodeStepType = "python" | "ai";
+export type WorkflowNodeStepType =
+  | "codex"
+  | "claude-code"
+  | "python"
+  | "ai";
 
 export type WorkflowNode = {
   id: string;

@@ -18,6 +18,21 @@ export type SavedWorkspace = {
   workspace: WorkspaceSnapshot;
 };
 
+export type CodexAuthState = {
+  authenticated: boolean;
+  available: boolean;
+  error: string | null;
+  method: string | null;
+};
+
+export type PythonOpenTarget =
+  | "vscode"
+  | "cursor"
+  | "finder"
+  | "terminal"
+  | "ghostty"
+  | "xcode";
+
 export class WorkspaceConflictError extends Error {
   currentRevision: number;
 
@@ -25,6 +40,36 @@ export class WorkspaceConflictError extends Error {
     super("Workspace was changed by another client.");
     this.name = "WorkspaceConflictError";
     this.currentRevision = currentRevision;
+  }
+}
+
+export async function getCodexAuthStatus(signal?: AbortSignal) {
+  const response = await fetch(`${runnerBaseUrl}/api/codex/auth/status`, {
+    method: "GET",
+    signal,
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      await getApiErrorMessage(
+        response,
+        "Could not check the Codex sign-in status.",
+      ),
+    );
+  }
+
+  return parseCodexAuthState(await response.json());
+}
+
+export async function startCodexLogin() {
+  const response = await fetch(`${runnerBaseUrl}/api/codex/auth/login`, {
+    method: "POST",
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      await getApiErrorMessage(response, "Could not start Codex sign-in."),
+    );
   }
 }
 
@@ -78,14 +123,21 @@ export async function saveWorkspace(
   return parseSavedWorkspace(await response.json());
 }
 
-export async function openPythonScriptInVsCode(
+export async function openPythonScriptInApplication(
   projectName: string,
   workflowName: string,
   nodeId: string,
   scriptName: string,
+  target: PythonOpenTarget,
 ) {
   const response = await fetch(`${runnerBaseUrl}/api/python-scripts/open`, {
-    body: JSON.stringify({ projectName, workflowName, nodeId, scriptName }),
+    body: JSON.stringify({
+      nodeId,
+      projectName,
+      scriptName,
+      target,
+      workflowName,
+    }),
     headers: {
       "Content-Type": "application/json",
     },
@@ -101,6 +153,35 @@ export async function openPythonScriptInVsCode(
 
     throw new Error(message);
   }
+}
+
+export async function loadPythonScriptContent(
+  projectName: string,
+  workflowName: string,
+  nodeId: string,
+  scriptName: string,
+) {
+  const response = await fetch(`${runnerBaseUrl}/api/python-scripts/content`, {
+    body: JSON.stringify({ projectName, workflowName, nodeId, scriptName }),
+    headers: {
+      "Content-Type": "application/json",
+    },
+    method: "POST",
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      await getApiErrorMessage(response, "Could not load Python script."),
+    );
+  }
+
+  const body: unknown = await response.json();
+
+  if (!isRecord(body) || typeof body.code !== "string") {
+    throw new Error("Runner returned invalid Python script content.");
+  }
+
+  return body.code;
 }
 
 export async function trashPythonScriptFile(
@@ -292,7 +373,10 @@ function isWorkflowNode(value: unknown): value is WorkflowNode {
       value.status === "running" ||
       value.status === "done" ||
       value.status === "error") &&
-    (value.stepType === "python" || value.stepType === "ai") &&
+    (value.stepType === "codex" ||
+      value.stepType === "claude-code" ||
+      value.stepType === "python" ||
+      value.stepType === "ai") &&
     typeof value.x === "number" &&
     Number.isFinite(value.x) &&
     typeof value.y === "number" &&
@@ -327,6 +411,25 @@ function resetProjectRuntimeState(project: Project): Project {
       })),
       trigger: workflow.trigger ? { ...workflow.trigger } : workflow.trigger,
     })),
+  };
+}
+
+function parseCodexAuthState(value: unknown): CodexAuthState {
+  if (
+    !isRecord(value) ||
+    typeof value.authenticated !== "boolean" ||
+    typeof value.available !== "boolean" ||
+    (value.method !== null && typeof value.method !== "string") ||
+    (value.error !== null && typeof value.error !== "string")
+  ) {
+    throw new Error("Runner returned an invalid Codex sign-in status.");
+  }
+
+  return {
+    authenticated: value.authenticated,
+    available: value.available,
+    error: value.error,
+    method: value.method,
   };
 }
 

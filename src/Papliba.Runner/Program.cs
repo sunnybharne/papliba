@@ -6,6 +6,7 @@ const string workspaceId = "default";
 const int maximumWorkspaceBytes = 2 * 1024 * 1024;
 const int maximumPythonScriptBytes = 256 * 1024;
 const int localAiTimeoutSeconds = 120;
+const int codexAuthCheckTimeoutSeconds = 10;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -44,6 +45,9 @@ var databasePath = Path.Combine(dataDirectory, "papliba.db");
 var projectsDirectory = Path.Combine(dataDirectory, "projects");
 var legacyScriptsDirectory = Path.Combine(dataDirectory, "scripts");
 var trashDirectory = Path.Combine(dataDirectory, "trash");
+var configuredAiCommand = builder.Configuration["PAPLIBA_AI_COMMAND"];
+var usesCodexCli = string.IsNullOrWhiteSpace(configuredAiCommand);
+var codexCommand = builder.Configuration["PAPLIBA_CODEX_COMMAND"] ?? "codex";
 Directory.CreateDirectory(projectsDirectory);
 Directory.CreateDirectory(trashDirectory);
 
@@ -56,6 +60,8 @@ var connectionString = new SqliteConnectionStringBuilder
 await InitializeDatabase(connectionString);
 
 var app = builder.Build();
+var codexLoginLock = new object();
+Process? codexLoginProcess = null;
 
 app.UseCors();
 
@@ -64,6 +70,96 @@ app.MapGet("/health", () => Results.Ok(new
     status = "ok",
     storage = "sqlite",
 }));
+
+app.MapGet("/api/codex/auth/status", async () =>
+{
+    if (!usesCodexCli)
+    {
+        return Results.Ok(new CodexAuthResponse(
+            true,
+            true,
+            "custom",
+            null
+        ));
+    }
+
+    return Results.Ok(await GetCodexAuthStatus(
+        codexCommand,
+        projectsDirectory,
+        codexAuthCheckTimeoutSeconds
+    ));
+});
+
+app.MapPost("/api/codex/auth/login", async () =>
+{
+    if (!usesCodexCli)
+    {
+        return Results.BadRequest(new ErrorResponse(
+            "Papliba is configured to use a custom AI command."
+        ));
+    }
+
+    var authStatus = await GetCodexAuthStatus(
+        codexCommand,
+        projectsDirectory,
+        codexAuthCheckTimeoutSeconds
+    );
+
+    if (authStatus.Authenticated)
+    {
+        return Results.Ok(authStatus);
+    }
+
+    if (!authStatus.Available)
+    {
+        return Results.Json(
+            new ErrorResponse(authStatus.Error ?? "Codex CLI is not available."),
+            statusCode: StatusCodes.Status503ServiceUnavailable
+        );
+    }
+
+    lock (codexLoginLock)
+    {
+        if (codexLoginProcess is not null && !codexLoginProcess.HasExited)
+        {
+            return Results.Accepted(
+                "/api/codex/auth/status",
+                new CodexLoginResponse(true)
+            );
+        }
+
+        codexLoginProcess?.Dispose();
+        codexLoginProcess = StartCodexLogin(codexCommand, projectsDirectory);
+
+        if (codexLoginProcess is null)
+        {
+            return Results.Json(
+                new ErrorResponse("Could not start Codex sign-in."),
+                statusCode: StatusCodes.Status503ServiceUnavailable
+            );
+        }
+
+        var loginProcess = codexLoginProcess;
+        loginProcess.Exited += (_, _) =>
+        {
+            lock (codexLoginLock)
+            {
+                if (ReferenceEquals(codexLoginProcess, loginProcess))
+                {
+                    codexLoginProcess = null;
+                }
+            }
+
+            loginProcess.Dispose();
+        };
+        loginProcess.EnableRaisingEvents = true;
+    }
+
+    return Results.Accepted(
+        "/api/codex/auth/status",
+        new CodexLoginResponse(true)
+    );
+});
 
 app.MapGet("/api/workspace", async () =>
 {
@@ -178,6 +274,9 @@ app.MapPut("/api/workspace", async (WorkspaceSaveRequest request) =>
 app.MapPost("/api/python-scripts/open", async (OpenPythonScriptRequest request) =>
 {
     var scriptName = GetScriptName(request.NodeId, request.ScriptName);
+    var openTarget = string.IsNullOrWhiteSpace(request.Target)
+        ? "vscode"
+        : request.Target.ToLowerInvariant();
 
     if (!IsValidPythonScriptRequest(
         request.ProjectName,
@@ -187,6 +286,13 @@ app.MapPost("/api/python-scripts/open", async (OpenPythonScriptRequest request) 
     ))
     {
         return Results.BadRequest(new ErrorResponse("Invalid Python script identifier."));
+    }
+
+    if (openTarget is not (
+        "vscode" or "cursor" or "finder" or "terminal" or "ghostty" or "xcode"
+    ))
+    {
+        return Results.BadRequest(new ErrorResponse("Unsupported application target."));
     }
 
     var workflowDirectory = Path.Combine(projectsDirectory, request.ProjectName, request.WorkflowName);
@@ -200,9 +306,10 @@ app.MapPost("/api/python-scripts/open", async (OpenPythonScriptRequest request) 
         scriptName
     );
 
-    var openError = await OpenInVisualStudioCode(
+    var openError = await OpenPythonScript(
         workflowDirectory,
         scriptPath,
+        openTarget,
         builder.Configuration["PAPLIBA_VSCODE_COMMAND"]
     );
 
@@ -215,6 +322,44 @@ app.MapPost("/api/python-scripts/open", async (OpenPythonScriptRequest request) 
     }
 
     return Results.Ok(new PythonScriptResponse(scriptPath));
+});
+
+app.MapPost("/api/python-scripts/content", async (OpenPythonScriptRequest request) =>
+{
+    var scriptName = GetScriptName(request.NodeId, request.ScriptName);
+
+    if (!IsValidPythonScriptRequest(
+        request.ProjectName,
+        request.WorkflowName,
+        request.NodeId,
+        scriptName
+    ))
+    {
+        return Results.BadRequest(new ErrorResponse("Invalid Python script identifier."));
+    }
+
+    var scriptPath = await EnsurePythonScriptFile(
+        projectsDirectory,
+        legacyScriptsDirectory,
+        trashDirectory,
+        request.ProjectName,
+        request.WorkflowName,
+        request.NodeId,
+        scriptName
+    );
+
+    if (new FileInfo(scriptPath).Length > maximumPythonScriptBytes)
+    {
+        return Results.Json(
+            new ErrorResponse("Python script is too large to preview."),
+            statusCode: StatusCodes.Status413PayloadTooLarge
+        );
+    }
+
+    return Results.Ok(new PythonScriptContentResponse(
+        scriptPath,
+        await File.ReadAllTextAsync(scriptPath)
+    ));
 });
 
 app.MapPost("/api/python-scripts/trash", (OpenPythonScriptRequest request) =>
@@ -299,6 +444,29 @@ app.MapPost("/api/python-scripts/chat", async (PythonScriptChatRequest request) 
         return Results.BadRequest(new ErrorResponse("Enter a message for the chat."));
     }
 
+    if (usesCodexCli)
+    {
+        var authStatus = await GetCodexAuthStatus(
+            codexCommand,
+            projectsDirectory,
+            codexAuthCheckTimeoutSeconds
+        );
+
+        if (!authStatus.Authenticated)
+        {
+            return Results.Json(
+                new ErrorResponse(
+                    authStatus.Available
+                        ? "Sign in with ChatGPT before using Codex."
+                        : authStatus.Error ?? "Codex CLI is not available."
+                ),
+                statusCode: authStatus.Available
+                    ? StatusCodes.Status401Unauthorized
+                    : StatusCodes.Status503ServiceUnavailable
+            );
+        }
+    }
+
     var workflowDirectory = Path.Combine(projectsDirectory, request.ProjectName, request.WorkflowName);
     var scriptPath = await EnsurePythonScriptFile(
         projectsDirectory,
@@ -311,7 +479,7 @@ app.MapPost("/api/python-scripts/chat", async (PythonScriptChatRequest request) 
     );
     var currentCode = await File.ReadAllTextAsync(scriptPath);
     var prompt = BuildPythonEditPrompt(scriptName, currentCode, request.Message);
-    var aiCommand = builder.Configuration["PAPLIBA_AI_COMMAND"]
+    var aiCommand = configuredAiCommand
         ?? "codex exec --skip-git-repo-check --sandbox read-only -";
     var aiResult = await AskLocalAiCommand(aiCommand, workflowDirectory, prompt);
 
@@ -515,6 +683,165 @@ static string BuildPythonEditPrompt(
         """;
 }
 
+static async Task<CodexAuthResponse> GetCodexAuthStatus(
+    string codexCommand,
+    string workingDirectory,
+    int timeoutSeconds
+)
+{
+    var result = await RunLocalCommand(
+        $"{codexCommand} login status",
+        workingDirectory,
+        timeoutSeconds
+    );
+    var combinedOutput = string.Join(
+        Environment.NewLine,
+        new[] { result.Output, result.Error }
+            .Where(value => !string.IsNullOrWhiteSpace(value))
+    ).Trim();
+
+    if (
+        result.IsSuccess
+        && combinedOutput.Contains("Logged in", StringComparison.OrdinalIgnoreCase)
+    )
+    {
+        var method = combinedOutput.Contains(
+            "API key",
+            StringComparison.OrdinalIgnoreCase
+        )
+            ? "api_key"
+            : combinedOutput.Contains("ChatGPT", StringComparison.OrdinalIgnoreCase)
+                ? "chatgpt"
+                : "codex";
+
+        return new CodexAuthResponse(true, true, method, null);
+    }
+
+    if (
+        combinedOutput.Contains("not logged in", StringComparison.OrdinalIgnoreCase)
+        || combinedOutput.Contains("signed out", StringComparison.OrdinalIgnoreCase)
+    )
+    {
+        return new CodexAuthResponse(false, true, null, null);
+    }
+
+    if (
+        combinedOutput.Contains("command not found", StringComparison.OrdinalIgnoreCase)
+        || combinedOutput.Contains("not recognized", StringComparison.OrdinalIgnoreCase)
+        || combinedOutput.Contains("No such file", StringComparison.OrdinalIgnoreCase)
+    )
+    {
+        return new CodexAuthResponse(
+            false,
+            false,
+            null,
+            "Codex CLI is not installed or is not available on PATH."
+        );
+    }
+
+    return new CodexAuthResponse(
+        false,
+        true,
+        null,
+        string.IsNullOrWhiteSpace(combinedOutput)
+            ? "Could not determine the Codex sign-in status."
+            : combinedOutput
+    );
+}
+
+static Process? StartCodexLogin(string codexCommand, string workingDirectory)
+{
+    try
+    {
+        var startInfo = new ProcessStartInfo
+        {
+            FileName = OperatingSystem.IsWindows() ? "cmd.exe" : "/bin/zsh",
+            WorkingDirectory = workingDirectory,
+            UseShellExecute = false,
+        };
+
+        if (OperatingSystem.IsWindows())
+        {
+            startInfo.ArgumentList.Add("/c");
+        }
+        else
+        {
+            startInfo.ArgumentList.Add("-lc");
+        }
+
+        startInfo.ArgumentList.Add($"{codexCommand} login");
+
+        return Process.Start(startInfo);
+    }
+    catch
+    {
+        return null;
+    }
+}
+
+static async Task<LocalAiCommandResult> RunLocalCommand(
+    string commandLine,
+    string workingDirectory,
+    int timeoutSeconds
+)
+{
+    try
+    {
+        var startInfo = new ProcessStartInfo
+        {
+            FileName = OperatingSystem.IsWindows() ? "cmd.exe" : "/bin/zsh",
+            WorkingDirectory = workingDirectory,
+            UseShellExecute = false,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+        };
+
+        if (OperatingSystem.IsWindows())
+        {
+            startInfo.ArgumentList.Add("/c");
+        }
+        else
+        {
+            startInfo.ArgumentList.Add("-lc");
+        }
+
+        startInfo.ArgumentList.Add(commandLine);
+
+        using var process = Process.Start(startInfo);
+
+        if (process is null)
+        {
+            return new LocalAiCommandResult(false, "", "Could not start the command.");
+        }
+
+        var outputTask = process.StandardOutput.ReadToEndAsync();
+        var errorTask = process.StandardError.ReadToEndAsync();
+
+        using var timeout = new CancellationTokenSource(
+            TimeSpan.FromSeconds(timeoutSeconds)
+        );
+
+        try
+        {
+            await process.WaitForExitAsync(timeout.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            process.Kill(entireProcessTree: true);
+            return new LocalAiCommandResult(false, "", "The command timed out.");
+        }
+
+        var output = (await outputTask).Trim();
+        var error = (await errorTask).Trim();
+
+        return new LocalAiCommandResult(process.ExitCode == 0, output, error);
+    }
+    catch (Exception exception)
+    {
+        return new LocalAiCommandResult(false, "", exception.Message);
+    }
+}
+
 static async Task<LocalAiCommandResult> AskLocalAiCommand(
     string commandLine,
     string workingDirectory,
@@ -626,12 +953,24 @@ static string ExtractPythonCode(string response)
     return trimmed[(firstLineBreak + 1)..lastFence].Trim();
 }
 
-static async Task<string?> OpenInVisualStudioCode(
+static async Task<string?> OpenPythonScript(
     string workflowDirectory,
     string scriptPath,
-    string? configuredCommand
+    string openTarget,
+    string? configuredVisualStudioCodeCommand
 )
 {
+    var targetLabel = openTarget switch
+    {
+        "vscode" => "Visual Studio Code",
+        "cursor" => "Cursor",
+        "finder" => "Finder",
+        "terminal" => "Terminal",
+        "ghostty" => "Ghostty",
+        "xcode" => "Xcode",
+        _ => "the selected application",
+    };
+
     try
     {
         var startInfo = new ProcessStartInfo
@@ -640,46 +979,111 @@ static async Task<string?> OpenInVisualStudioCode(
             RedirectStandardError = true,
         };
 
-        if (!string.IsNullOrWhiteSpace(configuredCommand))
+        if (
+            openTarget == "vscode"
+            && !string.IsNullOrWhiteSpace(configuredVisualStudioCodeCommand)
+        )
         {
-            startInfo.FileName = configuredCommand;
+            startInfo.FileName = configuredVisualStudioCodeCommand;
             startInfo.ArgumentList.Add(workflowDirectory);
             startInfo.ArgumentList.Add(scriptPath);
         }
         else if (OperatingSystem.IsMacOS())
         {
-            var visualStudioCodeCommand =
-                "/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code";
-
-            if (File.Exists(visualStudioCodeCommand))
+            if (openTarget == "vscode")
             {
-                startInfo.FileName = visualStudioCodeCommand;
-                startInfo.ArgumentList.Add("--reuse-window");
-                startInfo.ArgumentList.Add(workflowDirectory);
+                var visualStudioCodeCommand =
+                    "/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code";
+
+                if (File.Exists(visualStudioCodeCommand))
+                {
+                    startInfo.FileName = visualStudioCodeCommand;
+                    startInfo.ArgumentList.Add("--reuse-window");
+                    startInfo.ArgumentList.Add(workflowDirectory);
+                    startInfo.ArgumentList.Add(scriptPath);
+                }
+                else
+                {
+                    AddMacOpenApplicationArguments(
+                        startInfo,
+                        "Visual Studio Code",
+                        workflowDirectory,
+                        scriptPath
+                    );
+                }
+            }
+            else if (openTarget == "cursor")
+            {
+                var cursorCommand =
+                    "/Applications/Cursor.app/Contents/Resources/app/bin/cursor";
+
+                if (File.Exists(cursorCommand))
+                {
+                    startInfo.FileName = cursorCommand;
+                    startInfo.ArgumentList.Add("--reuse-window");
+                    startInfo.ArgumentList.Add(workflowDirectory);
+                    startInfo.ArgumentList.Add(scriptPath);
+                }
+                else
+                {
+                    AddMacOpenApplicationArguments(
+                        startInfo,
+                        "Cursor",
+                        workflowDirectory,
+                        scriptPath
+                    );
+                }
+            }
+            else if (openTarget == "finder")
+            {
+                startInfo.FileName = "open";
+                startInfo.ArgumentList.Add("-R");
                 startInfo.ArgumentList.Add(scriptPath);
             }
-            else
+            else if (openTarget == "ghostty")
             {
                 startInfo.FileName = "open";
                 startInfo.ArgumentList.Add("-a");
-                startInfo.ArgumentList.Add("Visual Studio Code");
-                startInfo.ArgumentList.Add(workflowDirectory);
-                startInfo.ArgumentList.Add(scriptPath);
+                startInfo.ArgumentList.Add("Ghostty");
+                startInfo.ArgumentList.Add("--args");
+                startInfo.ArgumentList.Add($"--working-directory={workflowDirectory}");
+            }
+            else
+            {
+                AddMacOpenApplicationArguments(
+                    startInfo,
+                    targetLabel,
+                    openTarget == "terminal" ? workflowDirectory : scriptPath
+                );
             }
         }
-        else
+        else if (openTarget is "vscode" or "cursor")
         {
-            startInfo.FileName = OperatingSystem.IsWindows() ? "code.cmd" : "code";
+            var command = openTarget == "vscode" ? "code" : "cursor";
+            startInfo.FileName = OperatingSystem.IsWindows()
+                ? $"{command}.cmd"
+                : command;
             startInfo.ArgumentList.Add("--reuse-window");
             startInfo.ArgumentList.Add(workflowDirectory);
             startInfo.ArgumentList.Add(scriptPath);
+        }
+        else if (openTarget == "finder")
+        {
+            startInfo.FileName = OperatingSystem.IsWindows() ? "explorer.exe" : "xdg-open";
+            startInfo.ArgumentList.Add(
+                OperatingSystem.IsWindows() ? $"/select,{scriptPath}" : workflowDirectory
+            );
+        }
+        else
+        {
+            return $"Opening in {targetLabel} is currently supported on macOS.";
         }
 
         using var process = Process.Start(startInfo);
 
         if (process is null)
         {
-            return "Could not start Visual Studio Code.";
+            return $"Could not start {targetLabel}.";
         }
 
         var standardErrorTask = process.StandardError.ReadToEndAsync();
@@ -689,12 +1093,28 @@ static async Task<string?> OpenInVisualStudioCode(
         return process.ExitCode == 0
             ? null
             : string.IsNullOrWhiteSpace(standardError)
-                ? "Visual Studio Code could not open the Python script."
+                ? $"{targetLabel} could not open the Python script."
                 : standardError.Trim();
     }
     catch (Exception exception)
     {
-        return $"Could not open Visual Studio Code: {exception.Message}";
+        return $"Could not open {targetLabel}: {exception.Message}";
+    }
+}
+
+static void AddMacOpenApplicationArguments(
+    ProcessStartInfo startInfo,
+    string applicationName,
+    params string[] paths
+)
+{
+    startInfo.FileName = "open";
+    startInfo.ArgumentList.Add("-a");
+    startInfo.ArgumentList.Add(applicationName);
+
+    foreach (var path in paths)
+    {
+        startInfo.ArgumentList.Add(path);
     }
 }
 
@@ -737,10 +1157,13 @@ record OpenPythonScriptRequest(
     string ProjectName,
     string WorkflowName,
     string NodeId,
-    string? ScriptName
+    string? ScriptName,
+    string? Target
 );
 
 record PythonScriptResponse(string Path);
+
+record PythonScriptContentResponse(string Path, string Code);
 
 record PythonScriptTrashResponse(bool Trashed, string? Path);
 
@@ -761,6 +1184,15 @@ record PythonScriptApplyRequest(
     string? ScriptName,
     string Code
 );
+
+record CodexAuthResponse(
+    bool Authenticated,
+    bool Available,
+    string? Method,
+    string? Error
+);
+
+record CodexLoginResponse(bool Started);
 
 record LocalAiCommandResult(bool IsSuccess, string Output, string Error);
 

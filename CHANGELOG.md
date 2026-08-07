@@ -6,6 +6,8 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-08-07
+
 ### Added
 
 - Added a loopback-only ASP.NET Core local runner.
@@ -18,14 +20,23 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 - Added a draggable Python script tool that creates a persisted workflow step.
 - Added persistent Python files with an Open in VS Code action on Python nodes.
 - Organized Python files by project and workflow with automatic legacy migration.
-- Move Python files to recoverable trash when their workflow nodes are deleted.
+- Moved Python files to recoverable trash when their workflow nodes are deleted.
 - Named new Python script files with the `python-script.py` format.
 - Added a right-side Codex-style Python script assistant panel.
 - Added review-first apply flow for AI-generated Python script changes.
+- Added Codex CLI authentication status and browser sign-in from the Python assistant.
+- Moved workflow node details behind a three-dot action and added Python file previews.
+- Replaced the Python node's VS Code action with an Open in application menu.
+- Limited new workflow node creation to Codex and Claude Code agent nodes.
 
 ### Changed
 
+- New workflows now start without a default trigger and prompt users to drag one from the toolbar.
 - Clear the selected workflow node when clicking the trigger, toolbar, or canvas.
+- Made the Open in picker compact, with its icon indicating the selected application used as the shared default action.
+- Replaced click-to-connect workflow nodes with a live drag-and-drop connection interaction.
+- Replaced placeholder Open in badges with the official installed application icons.
+- Added marquee selection and keyboard deletion for multiple workflow nodes.
 - Simplified the app hierarchy to Projects and Workflows.
 - Kept a starter project for new users instead of asking them to create every layer first.
 - Made the global search dialog more compact.

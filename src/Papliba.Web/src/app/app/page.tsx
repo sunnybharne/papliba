@@ -14,9 +14,11 @@ import {
   askPythonScriptChat,
   createDurableWorkspace,
   loadWorkspace,
-  openPythonScriptInVsCode,
+  loadPythonScriptContent,
+  openPythonScriptInApplication,
   saveWorkspace,
   trashPythonScriptFile,
+  type PythonOpenTarget,
 } from "@/lib/papliba-api";
 
 import { CreateProjectDialog } from "./_components/CreateProjectDialog";
@@ -102,17 +104,37 @@ function wait(milliseconds: number) {
   });
 }
 
-function getDefaultStepType(nodeCount: number): WorkflowNodeStepType {
-  return nodeCount === 0 ? "python" : "ai";
+function getDefaultStepType(): WorkflowNodeStepType {
+  return "codex";
 }
 
 function getDefaultStepName(stepType: WorkflowNodeStepType) {
-  return stepType === "python" ? defaultPythonScriptName : "AI step";
+  if (stepType === "python") {
+    return defaultPythonScriptName;
+  }
+
+  if (stepType === "claude-code") {
+    return "Claude Code";
+  }
+
+  if (stepType === "codex") {
+    return "Codex";
+  }
+
+  return "AI step";
 }
 
 function getDemoOutput(stepType: WorkflowNodeStepType, input: string) {
   if (stepType === "python") {
     return "Found 5 unread emails from today.";
+  }
+
+  if (stepType === "codex") {
+    return `Codex completed: ${input}`;
+  }
+
+  if (stepType === "claude-code") {
+    return `Claude Code completed: ${input}`;
   }
 
   return `Summary: ${input} 2 items look urgent.`;
@@ -508,7 +530,7 @@ export default function Home() {
               connections: [],
               name: nextWorkflowName,
               nodes: [],
-              trigger: { ...defaultWorkflowTriggerPosition },
+              trigger: null,
             },
           ],
         };
@@ -652,7 +674,7 @@ export default function Home() {
     saveWorkflowUndoStep();
 
     const nodeCount = activeWorkflow.nodes.length;
-    const stepType = requestedStepType ?? getDefaultStepType(nodeCount);
+    const stepType = requestedStepType ?? getDefaultStepType();
     const scriptName =
       stepType === "python"
         ? getNextPythonScriptName(activeWorkflow)
@@ -674,12 +696,29 @@ export default function Home() {
     }));
   }
 
-  async function openWorkflowPythonScript(nodeId: string) {
+  async function openWorkflowPythonScript(
+    nodeId: string,
+    target: PythonOpenTarget,
+  ) {
     if (!activeProject || !activeWorkflow) {
       throw new Error("The workflow is no longer available.");
     }
 
-    await openPythonScriptInVsCode(
+    await openPythonScriptInApplication(
+      activeProject.name,
+      activeWorkflow.name,
+      nodeId,
+      getPythonScriptName(activeWorkflow, nodeId),
+      target,
+    );
+  }
+
+  async function loadWorkflowPythonScript(nodeId: string) {
+    if (!activeProject || !activeWorkflow) {
+      throw new Error("The workflow is no longer available.");
+    }
+
+    return loadPythonScriptContent(
       activeProject.name,
       activeWorkflow.name,
       nodeId,
@@ -739,7 +778,7 @@ export default function Home() {
     }));
   }
 
-  function addWorkflowTrigger() {
+  function addWorkflowTrigger(position?: { x: number; y: number }) {
     if (!activeWorkflow || activeWorkflow.trigger !== null) {
       return;
     }
@@ -747,7 +786,7 @@ export default function Home() {
     saveWorkflowUndoStep();
     updateActiveWorkflow((workflow) => ({
       ...workflow,
-      trigger: { ...defaultWorkflowTriggerPosition },
+      trigger: position ?? { ...defaultWorkflowTriggerPosition },
     }));
   }
 
@@ -796,31 +835,36 @@ export default function Home() {
     }));
   }
 
-  async function deleteWorkflowNode(nodeId: string) {
+  async function deleteWorkflowNodes(nodeIds: string[]) {
     if (!activeProject || !activeWorkflow) {
-      return;
+      return false;
     }
 
-    const node = activeWorkflow.nodes.find((node) => {
-      return node.id === nodeId;
+    const nodeIdSet = new Set(nodeIds);
+    const nodesToDelete = activeWorkflow.nodes.filter((node) => {
+      return nodeIdSet.has(node.id);
     });
 
-    if (!node) {
-      return;
+    if (nodesToDelete.length === 0) {
+      return false;
     }
 
-    if (node.stepType === "python") {
-      try {
-        await trashPythonScriptFile(
-          activeProject.name,
-          activeWorkflow.name,
-          node.id,
-          getPythonScriptName(activeWorkflow, node.id),
-        );
-      } catch {
-        setWorkspaceSaveStatus("error");
-        return;
-      }
+    try {
+      await Promise.all(
+        nodesToDelete
+          .filter((node) => node.stepType === "python")
+          .map((node) =>
+            trashPythonScriptFile(
+              activeProject.name,
+              activeWorkflow.name,
+              node.id,
+              getPythonScriptName(activeWorkflow, node.id),
+            ),
+          ),
+      );
+    } catch {
+      setWorkspaceSaveStatus("error");
+      return false;
     }
 
     saveWorkflowUndoStep();
@@ -829,13 +873,16 @@ export default function Home() {
       ...workflow,
       connections: workflow.connections.filter((connection) => {
         return (
-          connection.fromNodeId !== nodeId && connection.toNodeId !== nodeId
+          !nodeIdSet.has(connection.fromNodeId) &&
+          !nodeIdSet.has(connection.toNodeId)
         );
       }),
       nodes: workflow.nodes.filter((node) => {
-        return node.id !== nodeId;
+        return !nodeIdSet.has(node.id);
       }),
     }));
+
+    return true;
   }
 
   async function runWorkflowDemo() {
@@ -1185,10 +1232,11 @@ export default function Home() {
           onConnectWorkflowNodes={connectWorkflowNodes}
           onCreateWorkflow={openWorkflowDialog}
           onOpenDeleteWorkflowDialog={openDeleteWorkflowDialog}
-          onDeleteWorkflowNode={deleteWorkflowNode}
+          onDeleteWorkflowNodes={deleteWorkflowNodes}
           onDeleteWorkflowTrigger={deleteWorkflowTrigger}
           onMoveWorkflowNode={moveWorkflowNode}
           onMoveWorkflowTrigger={moveWorkflowTrigger}
+          onLoadPythonScript={loadWorkflowPythonScript}
           onOpenPythonScript={openWorkflowPythonScript}
           onRenameWorkflow={renameWorkflow}
           onRunWorkflowDemo={runWorkflowDemo}

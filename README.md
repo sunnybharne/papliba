@@ -14,17 +14,18 @@ Papliba is not starting as an AI chat app. It is starting as a structured workfl
 
 ## Current Status
 
-This repository currently contains the project foundation and the first tiny frontend step:
+Papliba now includes a functional local workflow-building foundation:
 
-- project README
-- architecture diagram
-- changelog and release notes
-- open-source license
-- contribution and security docs
-- Husky and commitlint setup
-- first Next.js projects and workflows screen
+- persisted projects and workflows backed by SQLite
+- draggable workflow triggers and agent nodes
+- drag-and-drop node connections and multi-node marquee selection
+- workflow renaming, deletion, undo, and autosave
+- project/workflow-scoped Python script files
+- Open in support for VS Code, Cursor, Finder, Terminal, Ghostty, and Xcode
+- a Codex-powered Python script assistant with browser authentication
+- local-first ASP.NET Core runner APIs
 
-The first implementation is intentionally small: a Next.js workflow canvas backed by a local ASP.NET Core runner and SQLite workspace storage.
+Version 0.5.0 remains an early product iteration. Workflow execution is still a frontend demonstration while the durable editing, file-management, and local-runner foundations are developed.
 
 The web frontend uses Next.js + React + TypeScript. The local runner uses ASP.NET Core + SQLite.
 
@@ -100,6 +101,13 @@ The Python script assistant uses a logged-in terminal AI command through the loc
 ```bash
 codex exec --skip-git-repo-check --sandbox read-only -
 ```
+
+The assistant checks `codex login status` before it sends a request. When Codex
+is signed out, Papliba shows a **Sign in with ChatGPT** action that starts
+`codex login`; complete the official sign-in flow in the browser that opens.
+Codex stores and refreshes its own credentials, and Papliba never reads or
+stores them. Set `PAPLIBA_CODEX_COMMAND` if the Codex executable is not
+available as `codex` on the runner's `PATH`.
 
 Set `PAPLIBA_AI_COMMAND` before starting the runner if you want to use another local AI CLI.
 
