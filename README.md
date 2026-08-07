@@ -25,7 +25,7 @@ Papliba now includes a functional local workflow-building foundation:
 - a Codex-powered Python script assistant with browser authentication
 - local-first ASP.NET Core runner APIs
 
-Version 0.6.0 remains an early product iteration. Workflow execution is still a frontend demonstration while the durable editing, file-management, and local-runner foundations are developed.
+Version 0.7.0 remains an early product iteration. Workflow execution is still a frontend demonstration while the durable editing, file-management, and local-runner foundations are developed.
 
 The web frontend uses Next.js + React + TypeScript. The local runner uses ASP.NET Core + SQLite.
 

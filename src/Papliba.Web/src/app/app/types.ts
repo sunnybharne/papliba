@@ -20,6 +20,7 @@ export type WorkflowNode = {
   id: string;
   input?: string;
   kind: "rectangle";
+  logRetention?: number;
   name: string;
   output?: string;
   scriptName?: string;

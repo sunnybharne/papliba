@@ -1321,12 +1321,14 @@ a {
 }
 
 .workflow-trigger-node[data-triggered="true"],
-.workflow-node[data-status="running"] {
+.workflow-node[data-status="running"],
+.workflow-node[data-code-changed="true"] {
   border-color: color-mix(in srgb, var(--accent) 58%, var(--border));
 }
 
 .workflow-trigger-node[data-triggered="true"]::before,
-.workflow-node[data-status="running"]::before {
+.workflow-node[data-status="running"]::before,
+.workflow-node[data-code-changed="true"]::before {
   position: absolute;
   z-index: 4;
   inset: -2px;
@@ -1362,7 +1364,17 @@ a {
   animation: workflow-trigger-border-flow 240ms linear infinite;
 }
 
+.workflow-node[data-code-changed="true"]::before {
+  animation: workflow-node-code-change 320ms linear 1;
+}
+
 @keyframes workflow-trigger-border-flow {
+  to {
+    --trigger-run-angle: 360deg;
+  }
+}
+
+@keyframes workflow-node-code-change {
   to {
     --trigger-run-angle: 360deg;
   }
@@ -1370,6 +1382,10 @@ a {
 
 @media (prefers-reduced-motion: reduce) {
   .workflow-trigger-node[data-triggered="true"]::before {
+    animation-duration: 1ms;
+  }
+
+  .workflow-node[data-code-changed="true"]::before {
     animation-duration: 1ms;
   }
 
@@ -1448,6 +1464,18 @@ a {
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 22%, transparent);
 }
 
+.workflow-node[data-disconnected="true"] {
+  border-style: dashed;
+  filter: saturate(0.45);
+  opacity: 0.52;
+}
+
+.workflow-node[data-disconnected="true"][data-selected="true"],
+.workflow-node[data-disconnected="true"]:hover {
+  filter: none;
+  opacity: 0.78;
+}
+
 .workflow-node[data-menu-open="true"] {
   z-index: 8;
 }
@@ -1506,6 +1534,10 @@ a {
 
 .workflow-node-status[data-status="error"] {
   color: #ef4444;
+}
+
+.workflow-node-status[data-disconnected="true"] {
+  color: var(--muted);
 }
 
 .workflow-open-split-button {
@@ -1734,6 +1766,14 @@ a {
 
 .workflow-port-input {
   left: -6px;
+}
+
+.workflow-port-input[data-connected="true"] {
+  cursor: grab;
+}
+
+.workflow-port-input[data-connected="true"]:active {
+  cursor: grabbing;
 }
 
 .workflow-port-output {
@@ -2098,8 +2138,7 @@ a {
   white-space: pre-wrap;
 }
 
-.workflow-chat-message button,
-.workflow-chat-form button {
+.workflow-chat-message button {
   min-height: 30px;
   width: fit-content;
   padding: 0 10px;
@@ -2111,13 +2150,11 @@ a {
   font-size: 0.8rem;
 }
 
-.workflow-chat-message button:hover,
-.workflow-chat-form button:hover {
+.workflow-chat-message button:hover {
   background: var(--panel-deep);
 }
 
-.workflow-chat-message button:disabled,
-.workflow-chat-form button:disabled {
+.workflow-chat-message button:disabled {
   color: var(--muted);
   cursor: default;
   opacity: 0.55;
@@ -2125,31 +2162,216 @@ a {
 
 .workflow-chat-form {
   display: grid;
-  gap: 8px;
+  gap: 0;
   padding: 10px;
   border-top: 1px solid var(--border-soft);
 }
 
-.workflow-chat-form textarea {
-  min-height: 82px;
-  resize: none;
+.workflow-chat-context-bar {
+  display: flex;
+  min-width: 0;
+  min-height: 32px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 8px 0 10px;
   border: 1px solid var(--border-soft);
-  border-radius: 10px;
+  border-bottom: 0;
+  border-radius: 12px 12px 0 0;
+  background: var(--quiet-surface);
+}
+
+.workflow-chat-context-bar > span {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+  overflow: hidden;
+  color: var(--text-soft);
+  font-size: 0.7rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workflow-chat-context-bar > span svg {
+  width: 13px;
+  height: 13px;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.5;
+}
+
+.workflow-chat-context-bar > div {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 2px;
+}
+
+.workflow-chat-steer-label {
+  color: var(--muted);
+  font-size: 0.66rem;
+}
+
+.workflow-chat-context-bar button,
+.workflow-chat-icon-button {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  color: var(--muted);
+  background: transparent;
+}
+
+.workflow-chat-context-bar button:not(:disabled):hover,
+.workflow-chat-icon-button:not(:disabled):hover {
   color: var(--text);
+  background: var(--popup-active);
+}
+
+.workflow-chat-context-bar button:disabled,
+.workflow-chat-icon-button:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+
+.workflow-chat-context-bar button svg,
+.workflow-chat-icon-button svg {
+  width: 13px;
+  height: 13px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.7;
+}
+
+.workflow-chat-composer {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--border-soft);
+  border-radius: 0 0 16px 16px;
   background: var(--panel-deep);
+  transition: border-color 140ms ease;
+}
+
+.workflow-chat-composer:focus-within {
+  border-color: color-mix(in srgb, var(--accent) 38%, var(--border));
+}
+
+.workflow-chat-composer textarea {
+  min-height: 68px;
+  resize: none;
+  border: 0;
+  color: var(--text);
+  background: transparent;
   font: inherit;
   font-size: 0.82rem;
-  line-height: 1.35;
+  line-height: 1.4;
   outline: 0;
-  padding: 9px;
+  padding: 0;
 }
 
-.workflow-chat-form textarea:focus {
-  border-color: color-mix(in srgb, var(--accent) 46%, var(--border));
-}
-
-.workflow-chat-form textarea::placeholder {
+.workflow-chat-composer textarea::placeholder {
   color: var(--muted);
+}
+
+.workflow-chat-composer-toolbar,
+.workflow-chat-composer-toolbar > div {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+}
+
+.workflow-chat-composer-toolbar {
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.workflow-chat-composer-toolbar > div {
+  gap: 4px;
+}
+
+.workflow-chat-access,
+.workflow-chat-model {
+  display: flex;
+  min-width: 0;
+  height: 24px;
+  align-items: center;
+  gap: 4px;
+  color: var(--muted);
+  font-size: 0.64rem;
+  white-space: nowrap;
+}
+
+.workflow-chat-access {
+  color: color-mix(in srgb, var(--accent) 82%, var(--text));
+}
+
+.workflow-chat-access svg,
+.workflow-chat-model svg {
+  width: 12px;
+  height: 12px;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.6;
+}
+
+.workflow-chat-model {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.workflow-chat-model svg:last-child {
+  width: 9px;
+  height: 9px;
+}
+
+.workflow-chat-send-button {
+  display: grid;
+  width: 26px;
+  height: 26px;
+  flex: none;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  color: var(--panel-deep);
+  background: var(--text);
+  transition:
+    opacity 120ms ease,
+    transform 120ms ease;
+}
+
+.workflow-chat-send-button:not(:disabled):hover {
+  transform: translateY(-1px);
+}
+
+.workflow-chat-send-button:disabled {
+  color: var(--muted);
+  background: var(--quiet-surface);
+  cursor: default;
+  opacity: 0.7;
+}
+
+.workflow-chat-send-button svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
 }
 
 .workflow-trigger-empty {

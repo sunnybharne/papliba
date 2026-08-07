@@ -299,6 +299,38 @@ export async function applyPythonScriptCode(
   }
 }
 
+export async function writePythonRunLog(
+  projectName: string,
+  workflowName: string,
+  nodeId: string,
+  scriptName: string,
+  retention: number,
+  input: string,
+  output: string,
+) {
+  const response = await fetch(`${runnerBaseUrl}/api/python-scripts/logs`, {
+    body: JSON.stringify({
+      input,
+      nodeId,
+      output,
+      projectName,
+      retention,
+      scriptName,
+      workflowName,
+    }),
+    headers: {
+      "Content-Type": "application/json",
+    },
+    method: "POST",
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      await getApiErrorMessage(response, "Could not write Python run log."),
+    );
+  }
+}
+
 export function normalizeWorkspace(workspace: WorkspaceSnapshot) {
   const projects = workspace.projects.map(resetProjectRuntimeState);
   const selectedProject = projects.find((project) => {
@@ -418,6 +450,11 @@ function isWorkflowNode(value: unknown): value is WorkflowNode {
     Number.isFinite(value.y) &&
     (value.input === undefined || typeof value.input === "string") &&
     (value.output === undefined || typeof value.output === "string") &&
+    (value.logRetention === undefined ||
+      (typeof value.logRetention === "number" &&
+        Number.isInteger(value.logRetention) &&
+        value.logRetention >= 1 &&
+        value.logRetention <= 100)) &&
     (value.scriptName === undefined || typeof value.scriptName === "string")
   );
 }
@@ -475,6 +512,8 @@ function resetProjectRuntimeState(project: Project): Project {
         nodes: workflow.nodes.map((node) => ({
           ...node,
           input: undefined,
+          logRetention:
+            node.stepType === "python" ? node.logRetention ?? 10 : undefined,
           output: undefined,
           status: "idle",
         })),

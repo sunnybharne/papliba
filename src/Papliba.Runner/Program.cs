@@ -5,6 +5,7 @@ using Microsoft.Data.Sqlite;
 const string workspaceId = "default";
 const int maximumWorkspaceBytes = 2 * 1024 * 1024;
 const int maximumPythonScriptBytes = 256 * 1024;
+const int maximumPythonRunLogBytes = 512 * 1024;
 const int localAiTimeoutSeconds = 120;
 const int codexAuthCheckTimeoutSeconds = 10;
 
@@ -62,6 +63,7 @@ await InitializeDatabase(connectionString);
 var app = builder.Build();
 var codexLoginLock = new object();
 var pythonScriptFileLock = new SemaphoreSlim(1, 1);
+var pythonRunLogLock = new SemaphoreSlim(1, 1);
 Process? codexLoginProcess = null;
 
 app.UseCors();
@@ -606,6 +608,90 @@ app.MapPost("/api/python-scripts/apply", async (PythonScriptApplyRequest request
     await File.WriteAllTextAsync(scriptPath, request.Code.TrimEnd() + Environment.NewLine);
 
     return Results.Ok(new PythonScriptResponse(scriptPath));
+});
+
+app.MapPost("/api/python-scripts/logs", async (PythonRunLogRequest request) =>
+{
+    var scriptName = GetScriptName(request.NodeId, request.ScriptName);
+
+    if (
+        !IsValidPythonScriptRequest(
+            request.ProjectName,
+            request.WorkflowName,
+            request.NodeId,
+            scriptName
+        )
+        || request.Retention is < 1 or > 100
+    )
+    {
+        return Results.BadRequest(new ErrorResponse("Invalid Python run log request."));
+    }
+
+    var completedAt = DateTimeOffset.UtcNow;
+    var logContent = $$"""
+        Papliba Python step run
+        completed_at={{completedAt:O}}
+        status=completed
+        project={{request.ProjectName}}
+        workflow={{request.WorkflowName}}
+        step={{scriptName}}
+
+        input:
+        {{request.Input}}
+
+        output:
+        {{request.Output}}
+        """;
+
+    if (System.Text.Encoding.UTF8.GetByteCount(logContent) > maximumPythonRunLogBytes)
+    {
+        return Results.Json(
+            new ErrorResponse("Python run log is too large."),
+            statusCode: StatusCodes.Status413PayloadTooLarge
+        );
+    }
+
+    var scriptPath = await EnsurePythonScriptFile(
+        projectsDirectory,
+        legacyScriptsDirectory,
+        trashDirectory,
+        request.ProjectName,
+        request.WorkflowName,
+        request.NodeId,
+        scriptName
+    );
+    var scriptDirectory = Path.GetDirectoryName(scriptPath)!;
+
+    await pythonRunLogLock.WaitAsync();
+
+    try
+    {
+        var runId = Guid.NewGuid().ToString("N")[..8];
+        var logPath = Path.Combine(
+            scriptDirectory,
+            $"run-{completedAt:yyyyMMddTHHmmssfffZ}-{runId}.log"
+        );
+        await File.WriteAllTextAsync(logPath, logContent + Environment.NewLine);
+
+        var runLogs = Directory
+            .EnumerateFiles(scriptDirectory, "run-*.log")
+            .OrderByDescending(Path.GetFileName)
+            .ToArray();
+
+        foreach (var expiredLog in runLogs.Skip(request.Retention))
+        {
+            File.Delete(expiredLog);
+        }
+
+        return Results.Ok(new PythonRunLogResponse(
+            logPath,
+            Math.Min(runLogs.Length, request.Retention)
+        ));
+    }
+    finally
+    {
+        pythonRunLogLock.Release();
+    }
 });
 
 app.Run();
@@ -1312,6 +1398,18 @@ record PythonScriptApplyRequest(
     string? ScriptName,
     string Code
 );
+
+record PythonRunLogRequest(
+    string ProjectName,
+    string WorkflowName,
+    string NodeId,
+    string? ScriptName,
+    int Retention,
+    string Input,
+    string Output
+);
+
+record PythonRunLogResponse(string Path, int RetainedLogs);
 
 record CodexAuthResponse(
     bool Authenticated,

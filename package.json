@@ -1,6 +1,6 @@
 {
   "name": "papliba",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "Papliba local-first workflow builder.",
   "private": true,
   "scripts": {

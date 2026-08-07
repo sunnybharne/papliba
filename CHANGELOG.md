@@ -6,6 +6,20 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-08-07
+
+### Added
+
+- Added timestamped Python run logs beside `main.py`, with per-step retention settings defaulting to the latest 10 runs.
+- Added Command/Ctrl+C and Command/Ctrl+V duplication for selected workflow nodes, triggers, and their internal connections.
+- Added draggable input endpoints for moving an existing workflow connection from one target node to another.
+- Refined the Codex chat composer with a file-context strip, read-only access and default-model indicators, compact controls, and a circular send action.
+- Made applied Codex edits refresh an open Python file preview immediately and pulse the updated node once with the green energy effect.
+- Changed workflow execution to follow only nodes reachable from the pressed trigger and visibly mark unreachable nodes as disconnected.
+- Fixed drag-selection rectangles so they begin at the pointer instead of the canvas origin.
+- Added parallel execution batches for sibling workflow branches, while downstream joins wait for all reachable parents.
+- Added grouped dragging for Shift-selected and marquee-selected workflow nodes while preserving their relative spacing.
+
 ## [0.6.0] - 2026-08-07
 
 ### Added

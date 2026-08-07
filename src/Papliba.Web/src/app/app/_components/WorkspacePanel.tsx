@@ -41,6 +41,7 @@ type ActiveItemType = "project" | "workflow";
 type CreatableWorkflowNodeStepType = "codex" | "claude-code" | "python";
 const workflowTriggerHeight = 70;
 const workflowTriggerWidth = 150;
+const workflowClipboardMimeType = "application/x-papliba-workflow";
 
 type WorkspacePanelProps = {
   activeItem: ActiveItem | undefined;
@@ -61,12 +62,26 @@ type WorkspacePanelProps = {
     fromNodeId: string,
     toNodeId: string,
   ) => void;
+  onReconnectWorkflowConnection: (
+    fromNodeId: string,
+    previousToNodeId: string,
+    nextToNodeId: string,
+  ) => void;
   onCreateWorkflow: () => void;
   onOpenDeleteWorkflowDialog: (workflowName: string) => void;
   onDeleteWorkflowNodes: (nodeIds: string[]) => Promise<boolean>;
   onDeleteWorkflowTrigger: (triggerId: string) => void;
   onMoveWorkflowNode: (nodeId: string, x: number, y: number) => void;
+  onMoveWorkflowNodes: (
+    positions: Array<{ nodeId: string; x: number; y: number }>,
+  ) => void;
   onMoveWorkflowTrigger: (triggerId: string, x: number, y: number) => void;
+  onPasteWorkflowSelection: (
+    nodes: WorkflowNode[],
+    triggers: WorkflowTrigger[],
+    connections: WorkflowConnection[],
+    offset: number,
+  ) => { nodeIds: string[]; triggerIds: string[] };
   onRenameWorkflowPythonScript: (
     nodeId: string,
     name: string,
@@ -82,6 +97,7 @@ type WorkspacePanelProps = {
   onSelectWorkflow: (workflowName: string) => void;
   onStartWorkflowNodeMove: () => void;
   onUndoWorkflowEdit: () => void;
+  onUpdatePythonLogRetention: (nodeId: string, retention: number) => void;
   workspaceSaveStatus: WorkspaceSaveStatus;
 };
 
@@ -98,12 +114,15 @@ export function WorkspacePanel({
   onBackToProject,
   onConnectWorkflowNodes,
   onDeleteWorkflowConnection,
+  onReconnectWorkflowConnection,
   onCreateWorkflow,
   onOpenDeleteWorkflowDialog,
   onDeleteWorkflowNodes,
   onDeleteWorkflowTrigger,
   onMoveWorkflowNode,
+  onMoveWorkflowNodes,
   onMoveWorkflowTrigger,
+  onPasteWorkflowSelection,
   onRenameWorkflowPythonScript,
   onRenameWorkflowTrigger,
   onLoadPythonScript,
@@ -113,6 +132,7 @@ export function WorkspacePanel({
   onSelectWorkflow,
   onStartWorkflowNodeMove,
   onUndoWorkflowEdit,
+  onUpdatePythonLogRetention,
   workspaceSaveStatus,
 }: WorkspacePanelProps) {
   const [defaultOpenTarget, setDefaultOpenTarget] =
@@ -147,11 +167,14 @@ export function WorkspacePanel({
             onAskPythonScriptCode={onAskPythonScriptCode}
             onConnectNodes={onConnectWorkflowNodes}
             onDeleteConnection={onDeleteWorkflowConnection}
+            onReconnectConnection={onReconnectWorkflowConnection}
             onDeleteNodes={onDeleteWorkflowNodes}
             onDeleteTrigger={onDeleteWorkflowTrigger}
             onLoadPythonScript={onLoadPythonScript}
             onMoveNode={onMoveWorkflowNode}
+            onMoveNodes={onMoveWorkflowNodes}
             onMoveTrigger={onMoveWorkflowTrigger}
+            onPasteSelection={onPasteWorkflowSelection}
             onRenamePythonScript={onRenameWorkflowPythonScript}
             onRenameTrigger={onRenameWorkflowTrigger}
             onOpenPythonScript={onOpenPythonScript}
@@ -159,6 +182,7 @@ export function WorkspacePanel({
             onSelectDefaultOpenTarget={setDefaultOpenTarget}
             onStartNodeMove={onStartWorkflowNodeMove}
             onUndo={onUndoWorkflowEdit}
+            onUpdatePythonLogRetention={onUpdatePythonLogRetention}
           />
         ) : (
           <ProjectWorkflows
@@ -449,11 +473,25 @@ type WorkflowCanvasProps = {
   onAskPythonScriptCode: (nodeId: string, message: string) => Promise<string>;
   onConnectNodes: (fromNodeId: string, toNodeId: string) => void;
   onDeleteConnection: (fromNodeId: string, toNodeId: string) => void;
+  onReconnectConnection: (
+    fromNodeId: string,
+    previousToNodeId: string,
+    nextToNodeId: string,
+  ) => void;
   onDeleteNodes: (nodeIds: string[]) => Promise<boolean>;
   onDeleteTrigger: (triggerId: string) => void;
   onLoadPythonScript: (nodeId: string) => Promise<string>;
   onMoveNode: (nodeId: string, x: number, y: number) => void;
+  onMoveNodes: (
+    positions: Array<{ nodeId: string; x: number; y: number }>,
+  ) => void;
   onMoveTrigger: (triggerId: string, x: number, y: number) => void;
+  onPasteSelection: (
+    nodes: WorkflowNode[],
+    triggers: WorkflowTrigger[],
+    connections: WorkflowConnection[],
+    offset: number,
+  ) => { nodeIds: string[]; triggerIds: string[] };
   onRenamePythonScript: (nodeId: string, name: string) => Promise<string>;
   onRenameTrigger: (triggerId: string, name: string) => void;
   onOpenPythonScript: (
@@ -464,6 +502,7 @@ type WorkflowCanvasProps = {
   onSelectDefaultOpenTarget: (target: PythonOpenTarget) => void;
   onStartNodeMove: () => void;
   onUndo: () => void;
+  onUpdatePythonLogRetention: (nodeId: string, retention: number) => void;
 };
 
 function WorkflowCanvas({
@@ -479,11 +518,14 @@ function WorkflowCanvas({
   onAskPythonScriptCode,
   onConnectNodes,
   onDeleteConnection,
+  onReconnectConnection,
   onDeleteNodes,
   onDeleteTrigger,
   onLoadPythonScript,
   onMoveNode,
+  onMoveNodes,
   onMoveTrigger,
+  onPasteSelection,
   onRenamePythonScript,
   onRenameTrigger,
   onOpenPythonScript,
@@ -491,9 +533,18 @@ function WorkflowCanvas({
   onSelectDefaultOpenTarget,
   onStartNodeMove,
   onUndo,
+  onUpdatePythonLogRetention,
 }: WorkflowCanvasProps) {
   const canvasRef = useRef<HTMLDivElement>(null);
+  const copiedSelectionRef = useRef<{
+    connections: WorkflowConnection[];
+    nodes: WorkflowNode[];
+    pasteCount: number;
+    triggers: WorkflowTrigger[];
+  } | null>(null);
   const [connectingFromNodeId, setConnectingFromNodeId] = useState("");
+  const [reconnectingConnectionKey, setReconnectingConnectionKey] =
+    useState("");
   const [connectionPointer, setConnectionPointer] = useState<{
     x: number;
     y: number;
@@ -502,6 +553,10 @@ function WorkflowCanvas({
   const [selectedConnectionKey, setSelectedConnectionKey] = useState("");
   const [selectedTriggerId, setSelectedTriggerId] = useState("");
   const [triggerPulseId, setTriggerPulseId] = useState("");
+  const [codeChangedNodeId, setCodeChangedNodeId] = useState("");
+  const [pythonCodeRevisions, setPythonCodeRevisions] = useState<
+    Record<string, number>
+  >({});
   const [selectionRectangle, setSelectionRectangle] = useState<{
     height: number;
     width: number;
@@ -513,6 +568,10 @@ function WorkflowCanvas({
   const openNode = nodes.find((node) => node.id === openNodeId);
   const chatNode = nodes.find(
     (node) => node.id === chatNodeId && node.stepType === "python",
+  );
+  const reachableNodeIds = getReachableWorkflowNodeIds(
+    connections,
+    triggers,
   );
 
   useEffect(() => {
@@ -565,6 +624,89 @@ function WorkflowCanvas({
     onDeleteNodes,
     selectedConnectionKey,
     selectedNodeIds,
+  ]);
+
+  useEffect(() => {
+    function copySelectedNodes(event: ClipboardEvent) {
+      if (isWorkflowTextInput(event.target)) {
+        return;
+      }
+
+      const selectedNodeIdSet = new Set(selectedNodeIds);
+      const selectedTriggerIdSet = new Set(
+        selectedTriggerId ? [selectedTriggerId] : [],
+      );
+      const copiedNodes = nodes
+        .filter((node) => selectedNodeIdSet.has(node.id))
+        .map((node) => ({ ...node }));
+      const copiedTriggers = triggers
+        .filter((trigger) => selectedTriggerIdSet.has(trigger.id))
+        .map((trigger) => ({ ...trigger }));
+
+      if (copiedNodes.length === 0 && copiedTriggers.length === 0) {
+        return;
+      }
+
+      const copiedItemIds = new Set([
+        ...copiedNodes.map((node) => node.id),
+        ...copiedTriggers.map((trigger) => trigger.id),
+      ]);
+
+      event.preventDefault();
+      event.clipboardData?.setData(workflowClipboardMimeType, "selection");
+      event.clipboardData?.setData("text/plain", "Papliba workflow selection");
+      copiedSelectionRef.current = {
+        connections: connections
+          .filter(
+            (connection) =>
+              copiedItemIds.has(connection.fromNodeId) &&
+              copiedItemIds.has(connection.toNodeId),
+          )
+          .map((connection) => ({ ...connection, status: "idle" })),
+        nodes: copiedNodes,
+        pasteCount: 0,
+        triggers: copiedTriggers,
+      };
+    }
+
+    function pasteSelectedNodes(event: ClipboardEvent) {
+      if (
+        isWorkflowTextInput(event.target) ||
+        !copiedSelectionRef.current ||
+        event.clipboardData?.getData(workflowClipboardMimeType) !== "selection"
+      ) {
+        return;
+      }
+
+      event.preventDefault();
+      copiedSelectionRef.current.pasteCount += 1;
+      const pastedSelection = onPasteSelection(
+        copiedSelectionRef.current.nodes,
+        copiedSelectionRef.current.triggers,
+        copiedSelectionRef.current.connections,
+        copiedSelectionRef.current.pasteCount * 24,
+      );
+
+      setOpenNodeId("");
+      setChatNodeId("");
+      setSelectedConnectionKey("");
+      setSelectedNodeIds(pastedSelection.nodeIds);
+      setSelectedTriggerId(pastedSelection.triggerIds[0] ?? "");
+    }
+
+    window.addEventListener("copy", copySelectedNodes);
+    window.addEventListener("paste", pasteSelectedNodes);
+    return () => {
+      window.removeEventListener("copy", copySelectedNodes);
+      window.removeEventListener("paste", pasteSelectedNodes);
+    };
+  }, [
+    connections,
+    nodes,
+    onPasteSelection,
+    selectedNodeIds,
+    selectedTriggerId,
+    triggers,
   ]);
 
   function dropNode(event: DragEvent<HTMLDivElement>) {
@@ -628,6 +770,7 @@ function WorkflowCanvas({
   function startConnection(
     nodeId: string,
     event: ReactPointerEvent<HTMLButtonElement>,
+    connectionToReplace?: WorkflowConnection,
   ) {
     event.preventDefault();
     event.stopPropagation();
@@ -643,6 +786,9 @@ function WorkflowCanvas({
     const canvasTop = canvasRect.top;
 
     setConnectingFromNodeId(nodeId);
+    setReconnectingConnectionKey(
+      connectionToReplace ? getConnectionKey(connectionToReplace) : "",
+    );
     setConnectionPointer({
       x: sourceAnchor.x,
       y: sourceAnchor.y,
@@ -662,7 +808,18 @@ function WorkflowCanvas({
       const targetNodeId = dropTarget?.dataset.nodeId;
 
       if (targetNodeId && targetNodeId !== nodeId) {
-        onConnectNodes(nodeId, targetNodeId);
+        if (
+          connectionToReplace &&
+          targetNodeId !== connectionToReplace.toNodeId
+        ) {
+          onReconnectConnection(
+            connectionToReplace.fromNodeId,
+            connectionToReplace.toNodeId,
+            targetNodeId,
+          );
+        } else if (!connectionToReplace) {
+          onConnectNodes(nodeId, targetNodeId);
+        }
       }
 
       finishConnectionDrag();
@@ -680,6 +837,7 @@ function WorkflowCanvas({
       window.removeEventListener("pointercancel", finishConnectionDrag);
       window.removeEventListener("keydown", cancelConnection);
       setConnectingFromNodeId("");
+      setReconnectingConnectionKey("");
       setConnectionPointer(undefined);
     }
 
@@ -687,6 +845,31 @@ function WorkflowCanvas({
     window.addEventListener("pointerup", stopConnection);
     window.addEventListener("pointercancel", finishConnectionDrag);
     window.addEventListener("keydown", cancelConnection);
+  }
+
+  function startConnectionFromInput(
+    targetNodeId: string,
+    event: ReactPointerEvent<HTMLButtonElement>,
+  ) {
+    const incomingConnection = [...connections]
+      .reverse()
+      .find((connection) => connection.toNodeId === targetNodeId);
+
+    if (!incomingConnection) {
+      return;
+    }
+
+    startConnection(incomingConnection.fromNodeId, event, incomingConnection);
+  }
+
+  async function applyPythonCodeAndRefresh(nodeId: string, code: string) {
+    await onApplyPythonScriptCode(nodeId, code);
+    setPythonCodeRevisions((currentRevisions) => ({
+      ...currentRevisions,
+      [nodeId]: (currentRevisions[nodeId] ?? 0) + 1,
+    }));
+    setCodeChangedNodeId("");
+    window.requestAnimationFrame(() => setCodeChangedNodeId(nodeId));
   }
 
   function startSelectionRectangle(event: ReactPointerEvent<HTMLDivElement>) {
@@ -854,6 +1037,12 @@ function WorkflowCanvas({
         >
           <svg className="workflow-connections">
             {connections.map((connection) => {
+              if (
+                getConnectionKey(connection) === reconnectingConnectionKey
+              ) {
+                return null;
+              }
+
               const path = getConnectionPath(connection, nodes, triggers);
 
               if (!path) {
@@ -926,7 +1115,10 @@ function WorkflowCanvas({
 
           {triggers.map((trigger) => (
             <WorkflowTriggerBlock
-              canRun={nodes.length > 0}
+              canRun={getReachableNodeIdsFromSource(
+                trigger.id,
+                connections,
+              ).size > 0}
               connectingFromNodeId={connectingFromNodeId}
               isSelected={selectedTriggerId === trigger.id}
               isTriggered={triggerPulseId === trigger.id}
@@ -968,7 +1160,12 @@ function WorkflowCanvas({
             <div
               aria-hidden="true"
               className="workflow-selection-rectangle"
-              style={selectionRectangle}
+              style={{
+                height: selectionRectangle.height,
+                left: selectionRectangle.x,
+                top: selectionRectangle.y,
+                width: selectionRectangle.width,
+              }}
             />
           )}
 
@@ -978,11 +1175,17 @@ function WorkflowCanvas({
               defaultOpenTarget={defaultOpenTarget}
               isOpen={openNodeId === node.id}
               isChatActive={chatNodeId === node.id}
+              isCodeChanged={codeChangedNodeId === node.id}
+              isDisconnected={!reachableNodeIds.has(node.id)}
               isSelected={selectedNodeIds.includes(node.id)}
+              hasIncomingConnection={connections.some(
+                (connection) => connection.toNodeId === node.id,
+              )}
               key={node.id}
               node={node}
               onDelete={(nodeId) => void onDeleteNodes([nodeId])}
               onMoveNode={onMoveNode}
+              onMoveNodes={onMoveNodes}
               onOpen={(nodeId) => {
                 setOpenNodeId(nodeId);
                 setChatNodeId(
@@ -995,15 +1198,33 @@ function WorkflowCanvas({
               onOpenPythonScript={onOpenPythonScript}
               onRenamePythonScript={onRenamePythonScript}
               onSelectDefaultOpenTarget={onSelectDefaultOpenTarget}
-              onSelectNode={(selectedNode) => {
+              selectedNodes={nodes.filter((candidate) =>
+                selectedNodeIds.includes(candidate.id),
+              )}
+              onSelectNode={(selectedNode, additive) => {
                 setSelectedConnectionKey("");
                 setSelectedTriggerId("");
+                setSelectedNodeIds((currentNodeIds) => {
+                  if (additive) {
+                    return currentNodeIds.includes(selectedNode.id)
+                      ? currentNodeIds.filter(
+                          (nodeId) => nodeId !== selectedNode.id,
+                        )
+                      : [...currentNodeIds, selectedNode.id];
+                  }
+
+                  return currentNodeIds.includes(selectedNode.id)
+                    ? currentNodeIds
+                    : [selectedNode.id];
+                });
                 setChatNodeId(
                   selectedNode.stepType === "python" ? selectedNode.id : "",
                 );
               }}
               onStartMove={onStartNodeMove}
               onStartConnection={startConnection}
+              onStartReconnect={startConnectionFromInput}
+              onCodeChangeAnimationEnd={() => setCodeChangedNodeId("")}
             />
           ))}
 
@@ -1013,6 +1234,8 @@ function WorkflowCanvas({
               node={openNode}
               onClose={() => setOpenNodeId("")}
               onLoadPythonScript={onLoadPythonScript}
+              onUpdateLogRetention={onUpdatePythonLogRetention}
+              pythonCodeRevision={pythonCodeRevisions[openNode.id] ?? 0}
             />
           )}
 
@@ -1021,7 +1244,7 @@ function WorkflowCanvas({
         {chatNode && (
           <PythonScriptChatPanel
             node={chatNode}
-            onApply={onApplyPythonScriptCode}
+            onApply={applyPythonCodeAndRefresh}
             onAsk={onAskPythonScriptCode}
             onClose={() => setChatNodeId("")}
           />
@@ -1036,10 +1259,17 @@ type WorkflowNodeViewProps = {
   defaultOpenTarget: PythonOpenTarget;
   isOpen: boolean;
   isChatActive: boolean;
+  isCodeChanged: boolean;
+  isDisconnected: boolean;
+  hasIncomingConnection: boolean;
   isSelected: boolean;
   node: WorkflowNode;
   onDelete: (nodeId: string) => void;
+  onCodeChangeAnimationEnd: () => void;
   onMoveNode: (nodeId: string, x: number, y: number) => void;
+  onMoveNodes: (
+    positions: Array<{ nodeId: string; x: number; y: number }>,
+  ) => void;
   onOpen: (nodeId: string) => void;
   onOpenPythonScript: (
     nodeId: string,
@@ -1047,9 +1277,14 @@ type WorkflowNodeViewProps = {
   ) => Promise<void>;
   onRenamePythonScript: (nodeId: string, name: string) => Promise<string>;
   onSelectDefaultOpenTarget: (target: PythonOpenTarget) => void;
-  onSelectNode: (node: WorkflowNode) => void;
+  onSelectNode: (node: WorkflowNode, additive: boolean) => void;
+  selectedNodes: WorkflowNode[];
   onStartMove: () => void;
   onStartConnection: (
+    nodeId: string,
+    event: ReactPointerEvent<HTMLButtonElement>,
+  ) => void;
+  onStartReconnect: (
     nodeId: string,
     event: ReactPointerEvent<HTMLButtonElement>,
   ) => void;
@@ -1239,17 +1474,24 @@ function WorkflowNodeView({
   defaultOpenTarget,
   isOpen,
   isChatActive,
+  isCodeChanged,
+  isDisconnected,
+  hasIncomingConnection,
   isSelected,
   node,
   onDelete,
+  onCodeChangeAnimationEnd,
   onMoveNode,
+  onMoveNodes,
   onOpen,
   onOpenPythonScript,
   onRenamePythonScript,
   onSelectDefaultOpenTarget,
   onSelectNode,
+  selectedNodes,
   onStartMove,
   onStartConnection,
+  onStartReconnect,
 }: WorkflowNodeViewProps) {
   const size = getNodeSize(node.stepType);
   const defaultOpenOption =
@@ -1357,13 +1599,31 @@ function WorkflowNodeView({
       return;
     }
 
-    onSelectNode(node);
+    onSelectNode(node, event.shiftKey);
     event.preventDefault();
 
     const startX = event.clientX;
     const startY = event.clientY;
-    const startNodeX = node.x;
-    const startNodeY = node.y;
+    const nodesToMove =
+      isSelected || event.shiftKey
+        ? [
+            ...selectedNodes,
+            ...(selectedNodes.some((candidate) => candidate.id === node.id)
+              ? []
+              : [node]),
+          ]
+        : [node];
+    const startPositions = nodesToMove.map((candidate) => ({
+      nodeId: candidate.id,
+      x: candidate.x,
+      y: candidate.y,
+    }));
+    const minimumStartX = Math.min(
+      ...startPositions.map((position) => position.x),
+    );
+    const minimumStartY = Math.min(
+      ...startPositions.map((position) => position.y),
+    );
     let hasStartedMoving = false;
 
     function moveNode(pointerEvent: PointerEvent) {
@@ -1372,10 +1632,30 @@ function WorkflowNodeView({
         hasStartedMoving = true;
       }
 
-      onMoveNode(
-        node.id,
-        Math.max(12, startNodeX + pointerEvent.clientX - startX),
-        Math.max(12, startNodeY + pointerEvent.clientY - startY),
+      const deltaX = Math.max(
+        pointerEvent.clientX - startX,
+        12 - minimumStartX,
+      );
+      const deltaY = Math.max(
+        pointerEvent.clientY - startY,
+        12 - minimumStartY,
+      );
+
+      if (startPositions.length === 1) {
+        onMoveNode(
+          node.id,
+          startPositions[0].x + deltaX,
+          startPositions[0].y + deltaY,
+        );
+        return;
+      }
+
+      onMoveNodes(
+        startPositions.map((position) => ({
+          nodeId: position.nodeId,
+          x: position.x + deltaX,
+          y: position.y + deltaY,
+        })),
       );
     }
 
@@ -1394,8 +1674,15 @@ function WorkflowNodeView({
       data-menu-open={isOpenMenuVisible}
       data-open={isOpen}
       data-chat-active={isChatActive}
+      data-code-changed={isCodeChanged}
+      data-disconnected={isDisconnected}
       data-selected={isSelected}
       data-status={node.status}
+      onAnimationEnd={(event) => {
+        if (event.animationName === "workflow-node-code-change") {
+          onCodeChangeAnimationEnd();
+        }
+      }}
       onDoubleClick={openPythonScriptDetails}
       onPointerDown={dragNode}
       style={{
@@ -1422,12 +1709,23 @@ function WorkflowNodeView({
         <TrashIcon />
       </button>
       <button
-        aria-label={`Connect to ${node.name}`}
+        aria-label={
+          hasIncomingConnection
+            ? `Reconnect incoming connection for ${node.name}`
+            : `Connection input for ${node.name}`
+        }
         className="workflow-port workflow-port-input"
         data-available={
           connectingFromNodeId.length > 0 && connectingFromNodeId !== node.id
         }
+        data-connected={hasIncomingConnection}
         data-node-id={node.id}
+        onPointerDown={(event) => onStartReconnect(node.id, event)}
+        title={
+          hasIncomingConnection
+            ? "Drag to reconnect this input"
+            : "Connection input"
+        }
         type="button"
       />
       <div className="workflow-node-content">
@@ -1465,8 +1763,12 @@ function WorkflowNodeView({
             {node.name}
           </strong>
         )}
-        <span className="workflow-node-status" data-status={node.status}>
-          {getStatusLabel(node.status)}
+        <span
+          className="workflow-node-status"
+          data-disconnected={isDisconnected}
+          data-status={node.status}
+        >
+          {isDisconnected ? "Disconnected" : getStatusLabel(node.status)}
         </span>
         {node.stepType === "python" && (
           <div className="workflow-open-menu" ref={openMenuRef}>
@@ -1575,12 +1877,16 @@ type WorkflowNodePanelProps = {
   node: WorkflowNode;
   onClose: () => void;
   onLoadPythonScript: (nodeId: string) => Promise<string>;
+  onUpdateLogRetention: (nodeId: string, retention: number) => void;
+  pythonCodeRevision: number;
 };
 
 function WorkflowNodePanel({
   node,
   onClose,
   onLoadPythonScript,
+  onUpdateLogRetention,
+  pythonCodeRevision,
 }: WorkflowNodePanelProps) {
   const loadPythonScriptRef = useRef(onLoadPythonScript);
   const [pythonCode, setPythonCode] = useState("");
@@ -1600,8 +1906,15 @@ function WorkflowNodePanel({
       return;
     }
 
-    void loadPythonScriptRef
-      .current(node.id)
+    void Promise.resolve()
+      .then(() => {
+        if (isActive) {
+          setIsLoadingPythonCode(true);
+          setPythonCodeError("");
+        }
+
+        return loadPythonScriptRef.current(node.id);
+      })
       .then((code) => {
         if (isActive) {
           setPythonCode(code);
@@ -1625,7 +1938,7 @@ function WorkflowNodePanel({
     return () => {
       isActive = false;
     };
-  }, [node.id, node.stepType]);
+  }, [node.id, node.stepType, pythonCodeRevision]);
 
   return (
     <aside className="workflow-node-panel">
@@ -1642,16 +1955,32 @@ function WorkflowNodePanel({
       </div>
 
       {node.stepType === "python" && (
-        <div className="workflow-node-panel-code">
-          <span>File content</span>
-          {isLoadingPythonCode ? (
-            <p>Loading script…</p>
-          ) : pythonCodeError ? (
-            <p data-error="true">{pythonCodeError}</p>
-          ) : (
-            <PythonCodePreview code={pythonCode} />
-          )}
-        </div>
+        <>
+          <label className="workflow-node-panel-field">
+            <span>Run logs to keep</span>
+            <input
+              aria-label="Run logs to keep"
+              max="100"
+              min="1"
+              onChange={(event) => {
+                onUpdateLogRetention(node.id, event.target.valueAsNumber);
+              }}
+              type="number"
+              value={node.logRetention ?? 10}
+            />
+          </label>
+
+          <div className="workflow-node-panel-code">
+            <span>File content</span>
+            {isLoadingPythonCode ? (
+              <p>Loading script…</p>
+            ) : pythonCodeError ? (
+              <p data-error="true">{pythonCodeError}</p>
+            ) : (
+              <PythonCodePreview code={pythonCode} />
+            )}
+          </div>
+        </>
       )}
 
       {(node.input || node.output) && (
@@ -1904,6 +2233,15 @@ function PythonScriptChatPanel({
     }
   }
 
+  function handleChatDraftKeyDown(
+    event: ReactKeyboardEvent<HTMLTextAreaElement>,
+  ) {
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+      event.currentTarget.form?.requestSubmit();
+    }
+  }
+
   async function applyCode(message: ChatMessage) {
     if (!node || !message.code || message.isApplied || applyingMessageId) {
       return;
@@ -2043,21 +2381,96 @@ function PythonScriptChatPanel({
       </div>
 
       <form className="workflow-chat-form" onSubmit={askForCode}>
-        <textarea
-          disabled={!codexAuth?.authenticated || !node || isAsking}
-          onChange={(event) => setDraft(event.target.value)}
-          placeholder="Ask Codex"
-          rows={3}
-          value={draft}
-        />
-        <button
-          disabled={
-            !codexAuth?.authenticated || !node || !draft.trim() || isAsking
-          }
-          type="submit"
-        >
-          {isAsking ? "Working" : "Send"}
-        </button>
+        <div className="workflow-chat-context-bar">
+          <span title={node ? `${node.scriptName ?? node.name}/main.py` : "No script selected"}>
+            <ContextFileIcon />
+            {node ? `${node.scriptName ?? node.name}/main.py` : "No script selected"}
+          </span>
+          <div>
+            <span className="workflow-chat-steer-label">Steer</span>
+            <button
+              aria-label="Clear conversation"
+              disabled={messages.length === 0 && draft.length === 0}
+              onClick={() => {
+                setDraft("");
+                setMessages([]);
+              }}
+              title="Clear conversation"
+              type="button"
+            >
+              <TrashIcon />
+            </button>
+            <button
+              aria-label="More prompt options (coming soon)"
+              disabled
+              title="More prompt options coming soon"
+              type="button"
+            >
+              <MoreIcon />
+            </button>
+          </div>
+        </div>
+
+        <div className="workflow-chat-composer">
+          <textarea
+            aria-label="Ask Codex"
+            disabled={!codexAuth?.authenticated || !node || isAsking}
+            onChange={(event) => setDraft(event.target.value)}
+            onKeyDown={handleChatDraftKeyDown}
+            placeholder="Ask Codex"
+            rows={3}
+            value={draft}
+          />
+
+          <div className="workflow-chat-composer-toolbar">
+            <div>
+              <button
+                aria-label="Attach files (coming soon)"
+                className="workflow-chat-icon-button"
+                disabled
+                title="File attachments coming soon"
+                type="button"
+              >
+                <PlusIcon />
+              </button>
+              <span className="workflow-chat-access" title="Codex runs with read-only workspace access">
+                <AccessIcon />
+                Read only
+              </span>
+            </div>
+
+            <div>
+              <span className="workflow-chat-model" title="Uses the default model configured by Codex">
+                <ModelIcon />
+                Codex default
+                <ChevronDownIcon />
+              </span>
+              <button
+                aria-label="Voice input (coming soon)"
+                className="workflow-chat-icon-button"
+                disabled
+                title="Voice input coming soon"
+                type="button"
+              >
+                <MicrophoneIcon />
+              </button>
+              <button
+                aria-label={isAsking ? "Codex is working" : "Send message"}
+                className="workflow-chat-send-button"
+                disabled={
+                  !codexAuth?.authenticated ||
+                  !node ||
+                  !draft.trim() ||
+                  isAsking
+                }
+                title={isAsking ? "Codex is working" : "Send message"}
+                type="submit"
+              >
+                <ArrowUpIcon />
+              </button>
+            </div>
+          </div>
+        </div>
       </form>
     </aside>
   );
@@ -2146,6 +2559,54 @@ function getConnectionSourceAnchor(
 
 function getConnectionKey(connection: WorkflowConnection) {
   return `${connection.fromNodeId}->${connection.toNodeId}`;
+}
+
+function getReachableNodeIdsFromSource(
+  sourceId: string,
+  connections: WorkflowConnection[],
+) {
+  const reachableNodeIds = new Set<string>();
+  const pendingSourceIds = [sourceId];
+
+  while (pendingSourceIds.length > 0) {
+    const currentSourceId = pendingSourceIds.shift();
+
+    if (!currentSourceId) {
+      continue;
+    }
+
+    for (const connection of connections) {
+      if (
+        connection.fromNodeId !== currentSourceId ||
+        reachableNodeIds.has(connection.toNodeId)
+      ) {
+        continue;
+      }
+
+      reachableNodeIds.add(connection.toNodeId);
+      pendingSourceIds.push(connection.toNodeId);
+    }
+  }
+
+  return reachableNodeIds;
+}
+
+function getReachableWorkflowNodeIds(
+  connections: WorkflowConnection[],
+  triggers: WorkflowTrigger[],
+) {
+  const reachableNodeIds = new Set<string>();
+
+  for (const trigger of triggers) {
+    for (const nodeId of getReachableNodeIdsFromSource(
+      trigger.id,
+      connections,
+    )) {
+      reachableNodeIds.add(nodeId);
+    }
+  }
+
+  return reachableNodeIds;
 }
 
 function WorkflowConnectionParticle({ path }: { path: string }) {
@@ -2239,6 +2700,49 @@ function PlusIcon() {
     <svg aria-hidden="true" fill="none" viewBox="0 0 24 24">
       <path d="M12 5v14" />
       <path d="M5 12h14" />
+    </svg>
+  );
+}
+
+function ContextFileIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 20 20">
+      <path d="M5.5 3.5v13M8.5 6.5h6M8.5 10h4.5" />
+    </svg>
+  );
+}
+
+function AccessIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 20 20">
+      <path d="M10 2.8 15 5v4.2c0 3.4-2 6.3-5 8-3-1.7-5-4.6-5-8V5l5-2.2Z" />
+      <path d="M8.2 9.7 9.5 11l2.7-3" />
+    </svg>
+  );
+}
+
+function ModelIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 20 20">
+      <path d="m10 2 .8 3.2L14 6l-3.2.8L10 10l-.8-3.2L6 6l3.2-.8L10 2Z" />
+      <path d="m5 11 .6 2.4L8 14l-2.4.6L5 17l-.6-2.4L2 14l2.4-.6L5 11Zm10-1 .5 2 2 .5-2 .5-.5 2-.5-2-2-.5 2-.5.5-2Z" />
+    </svg>
+  );
+}
+
+function MicrophoneIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 20 20">
+      <rect height="9" rx="3" width="5.5" x="7.25" y="2.5" />
+      <path d="M4.8 9.5a5.2 5.2 0 0 0 10.4 0M10 14.7v2.8M7.5 17.5h5" />
+    </svg>
+  );
+}
+
+function ArrowUpIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 20 20">
+      <path d="m5.5 9 4.5-4.5L14.5 9M10 4.8v10.7" />
     </svg>
   );
 }
