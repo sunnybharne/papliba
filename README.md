@@ -1,138 +1,66 @@
 # Papliba
 
-Papliba is a local-first visual workflow builder.
+[![CI](https://github.com/sunnybharne/papliba/actions/workflows/ci.yml/badge.svg)](https://github.com/sunnybharne/papliba/actions/workflows/ci.yml)
+[![GitHub Pages](https://github.com/sunnybharne/papliba/actions/workflows/pages.yml/badge.svg)](https://github.com/sunnybharne/papliba/actions/workflows/pages.yml)
+[![Version](https://img.shields.io/badge/version-0.8.0--alpha.1-17211b)](CHANGELOG.md)
+[![License](https://img.shields.io/badge/license-Apache--2.0-d9ff70)](LICENSE)
 
-The idea is simple:
+Papliba is an open-source, local-first control surface for the [Pi coding agent](https://pi.dev/). The product goal is to make agent activity visible, reviewable, and easier to shape without reimplementing Pi itself.
 
-```text
-Trigger -> Worker -> Worker -> Output
+> [!IMPORTANT]
+> Version `0.8.0-alpha.1` is an architecture preview. It contains the product website, documentation, proposed system design, and contributor tooling. It is **not** a working Pi interface yet.
+
+## Explore
+
+- [Product site](https://sunnybharne.github.io/papliba/)
+- [Product brief](docs/PRODUCT.md)
+- [Architecture](docs/ARCHITECTURE.md)
+- [Roadmap](docs/ROADMAP.md)
+- [Contributing](CONTRIBUTING.md)
+
+## Proposed architecture
+
+```mermaid
+flowchart LR
+    UI[React + Vite client] <-->|Papliba events over SignalR / WebSocket| Bridge[ASP.NET Core local companion]
+    Bridge <-->|Strict JSONL over stdin / stdout| Pi[pi --mode rpc]
+    Pi --> Workspace[(Local workspace)]
+    Pi --> Providers[Model providers]
 ```
 
-A user creates small workers, connects them together, and lets the output of one worker become the input for the next worker.
+React owns presentation and browser state. The proposed local companion owns security, process lifecycle, workspace policy, and event relay. Pi RPC remains responsible for sessions, tools, models, and agent behavior. SignalR/WebSocket is a Papliba design choice; JSONL over standard input/output is Pi's documented RPC boundary.
 
-Papliba is not starting as an AI chat app. It is starting as a structured workflow product. Some workers can be normal automation steps, and AI workers can be added later.
+See [the full architecture decision](docs/ARCHITECTURE.md) for trust boundaries, message flow, alternatives, and open questions.
 
-## Current Status
+## Local development
 
-Papliba now includes a functional local workflow-building foundation:
+Requirements:
 
-- persisted projects and workflows backed by SQLite
-- draggable workflow triggers and agent nodes
-- drag-and-drop node connections and multi-node marquee selection
-- workflow renaming, deletion, undo, and autosave
-- project/workflow-scoped Python step folders with a `main.py` entry file
-- Open in support for VS Code, Cursor, Finder, Terminal, Ghostty, and Xcode
-- a Codex-powered Python script assistant with browser authentication
-- local-first ASP.NET Core runner APIs
-
-Version 0.7.0 remains an early product iteration. Workflow execution is still a frontend demonstration while the durable editing, file-management, and local-runner foundations are developed.
-
-The web frontend uses Next.js + React + TypeScript. The local runner uses ASP.NET Core + SQLite.
-
-Public project website:
-
-```text
-https://sunnybharne.github.io/papliba/
-```
-
-Documentation website:
-
-```text
-https://sunnybharne.github.io/papliba/docs/
-```
-
-Open the app at:
-
-```text
-http://127.0.0.1:3000/app
-```
-
-## Architecture
-
-- [Papliba architecture diagram](docs/diagrams/papliba-architecture.drawio)
-
-## Product Direction
-
-Papliba can have two future versions:
-
-```text
-Papliba Personal
-Runs locally for individual users.
-
-Papliba Team / Enterprise
-Runs on a server for companies and teams.
-```
-
-The personal version should be local-first so users can safely run workflows on their own machine. The team version can later add accounts, shared workflows, central provider keys, audit logs, and permissions.
-
-## Development Setup
-
-Install project tooling:
+- Node.js 24 LTS (`.nvmrc` pins the tested release)
+- npm 11 or newer
 
 ```bash
-npm install
-npm install --prefix src/Papliba.Web
+git clone https://github.com/sunnybharne/papliba.git
+cd papliba
+nvm use
+npm ci
+npm run dev
 ```
 
-Run validation:
+The GitHub Pages site uses hash routes and Vite's `/papliba/` base path, so no server-side route fallback is required.
+
+## Quality checks
 
 ```bash
 npm run validate
 ```
 
-Run the Next.js app:
+The validation pipeline checks formatting, ESLint, TypeScript, Vitest, and the production build. Husky runs staged-file checks before commits and Commitlint enforces [Conventional Commits](https://www.conventionalcommits.org/).
 
-```bash
-npm run start:web
-```
+## Project history
 
-In another terminal, run the local runner:
-
-```bash
-npm run start:runner
-```
-
-The web app runs at `http://127.0.0.1:3000` and the runner listens on `http://127.0.0.1:5127`.
-
-The runner stores the workspace in the operating system's local application-data directory. Set `PAPLIBA_DATA_DIRECTORY` when you need a custom location for development or testing.
-
-The Python script assistant uses a logged-in terminal AI command through the local runner. By default the runner tries:
-
-```bash
-codex exec --skip-git-repo-check --sandbox read-only -
-```
-
-The assistant checks `codex login status` before it sends a request. When Codex
-is signed out, Papliba shows a **Sign in with ChatGPT** action that starts
-`codex login`; complete the official sign-in flow in the browser that opens.
-Codex stores and refreshes its own credentials, and Papliba never reads or
-stores them. Set `PAPLIBA_CODEX_COMMAND` if the Codex executable is not
-available as `codex` on the runner's `PATH`.
-
-Set `PAPLIBA_AI_COMMAND` before starting the runner if you want to use another local AI CLI.
-
-## Commit Style
-
-This project uses Conventional Commits.
-
-Good examples:
-
-```text
-docs: add architecture diagram
-chore: configure project tooling
-feat: add workflow canvas
-fix: correct diagram label
-```
-
-Husky runs local checks before commits and validates commit messages.
-
-## Releases
-
-- Technical changes are tracked in [CHANGELOG.md](CHANGELOG.md).
-- Human-facing release notes live in [docs/releases](docs/releases).
+Papliba was rebooted after an earlier prototype. That prototype remains recoverable on the [`archive/v0.7.0`](https://github.com/sunnybharne/papliba/tree/archive/v0.7.0) branch; the current product direction starts with this architecture preview.
 
 ## License
 
-Papliba is open source under the Apache License 2.0.
-
-See [LICENSE](LICENSE) for details.
+Licensed under the [Apache License 2.0](LICENSE).

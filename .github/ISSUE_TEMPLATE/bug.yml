@@ -1,0 +1,48 @@
+name: Bug report
+description: Report a reproducible problem in the current Papliba release.
+title: 'bug: '
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Papliba is currently an architecture preview. Please report behavior that exists in the current product site or repository tooling, not a missing planned feature.
+
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+      placeholder: 0.8.0-alpha.1 or commit SHA
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What happened?
+      description: Include a clear description and the result you expected.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction steps
+      placeholder: |
+        1. Open…
+        2. Select…
+        3. Observe…
+    validations:
+      required: true
+
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      placeholder: Browser, operating system, Node version, or other relevant details
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Add logs or screenshots after removing private data.

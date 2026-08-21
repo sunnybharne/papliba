@@ -1,0 +1,40 @@
+name: Product idea
+description: Propose a product, documentation, or contributor improvement.
+title: 'idea: '
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem should Papliba solve?
+      description: Describe the situation before describing a feature.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed direction
+      description: Explain the smallest change that would improve the situation.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Product site
+        - Documentation
+        - Proposed local companion
+        - Proposed agent interface
+        - Contributor workflow
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: tradeoffs
+    attributes:
+      label: Trade-offs or alternatives
+      description: Note security, complexity, accessibility, or scope concerns you can already see.
