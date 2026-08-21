@@ -9,6 +9,13 @@ updates:
         dependency-type: development
       production-dependencies:
         dependency-type: production
+    ignore:
+      # TypeScript 7 is outside the supported range of typescript-eslint 8.
+      - dependency-name: typescript
+        update-types: ['version-update:semver-major']
+      # Keep Node type definitions aligned with the pinned Node 24 LTS runtime.
+      - dependency-name: '@types/node'
+        update-types: ['version-update:semver-major']
     open-pull-requests-limit: 5
 
   - package-ecosystem: github-actions
