@@ -25,11 +25,12 @@ export function ArchitecturePage() {
     <>
       <section className="page-hero section-grid-bg">
         <div className="shell page-hero__inner">
-          <p className="eyebrow">PROPOSED ARCHITECTURE · ADR-001</p>
-          <h1>A thin interface over the real Pi runtime.</h1>
+          <p className="eyebrow">VALIDATED ALPHA ARCHITECTURE · ADR-001</p>
+          <h1>A controlled route from intent to execution.</h1>
           <p>
-            Papliba will not rebuild the coding agent in a browser. The proposal keeps authority in
-            a local companion and talks to Pi through its official, language-neutral RPC mode.
+            Papliba does not rebuild the coding agent in a browser. The working alpha keeps
+            authority in a local companion and talks to Pi through its official, language-neutral
+            RPC mode.
           </p>
           <div className="fact-row">
             <span>React + Vite</span>
@@ -46,8 +47,9 @@ export function ArchitecturePage() {
           <div className="architecture-callout">
             <strong>Architecture status</strong>
             <p>
-              This is a proposed boundary for the future application. The current release is a
-              static React product and documentation site hosted on GitHub Pages.
+              The private alpha implements this boundary with a React client, ASP.NET Core
+              companion, HTTP event stream, and Pi RPC process. This public repository contains only
+              the product site and architecture documentation.
             </p>
           </div>
           <ArchitectureDiagram />
@@ -93,8 +95,8 @@ export function ArchitecturePage() {
             <p className="eyebrow">EXAMPLE FLOW</p>
             <h2>One prompt, visible end to end.</h2>
             <p>
-              Papliba’s protocol will preserve Pi’s streaming events and attach product-level
-              context without mutating the underlying agent behavior.
+              Papliba’s protocol preserves Pi’s streaming events and attaches product-level context
+              without mutating the underlying agent behavior.
             </p>
           </div>
           <ol className="sequence-list">
@@ -147,7 +149,9 @@ export function ArchitecturePage() {
               <span role="cell">
                 Focused client with static deployment and no server framework.
               </span>
-              <span role="cell">A working agent requires a separate local runtime.</span>
+              <span role="cell">
+                Agent execution still requires a separately managed local runtime.
+              </span>
             </div>
             <div role="row">
               <strong role="cell">ASP.NET Core</strong>
@@ -171,8 +175,8 @@ export function ArchitecturePage() {
             <p className="eyebrow">PRIMARY SOURCE</p>
             <h2>Built around Pi’s documented RPC contract.</h2>
             <p>
-              WebSocket and SignalR are Papliba design choices. JSONL over stdin and stdout is the
-              official Pi boundary.
+              The private alpha uses a local HTTP event stream as a Papliba implementation choice.
+              JSONL over stdin and stdout remains the official Pi boundary.
             </p>
           </div>
           <a

@@ -20,33 +20,31 @@ function renderApp(route = '/') {
 }
 
 describe('Papliba product site', () => {
-  it('states clearly that the current release is not a working agent UI', () => {
+  it('states clearly that the working alpha remains private', () => {
     renderApp();
 
-    expect(screen.getByRole('heading', { name: /your pi agent/i })).toBeInTheDocument();
-    expect(screen.getByText(/not a working agent ui yet/i)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /agent work/i })).toBeInTheDocument();
+    expect(screen.getByText(/working private alpha is in active development/i)).toBeInTheDocument();
   });
 
   it('navigates to the architecture from the primary call to action', async () => {
     const user = userEvent.setup();
     renderApp();
 
-    await user.click(screen.getByRole('link', { name: /explore the architecture/i }));
+    await user.click(screen.getByRole('link', { name: /see how it works/i }));
 
     expect(
-      screen.getByRole('heading', { name: /a thin interface over the real pi runtime/i }),
+      screen.getByRole('heading', { name: /a controlled route from intent to execution/i }),
     ).toBeInTheDocument();
   });
 
-  it('renders the planned and current states in the documentation', () => {
+  it('renders public and private-alpha states in the documentation', () => {
     renderApp('/docs');
 
     expect(
-      screen.getByRole('heading', { name: /start with what is true today/i }),
+      screen.getByRole('heading', { name: /public facts. private implementation/i }),
     ).toBeInTheDocument();
-    expect(
-      screen.getByText(/there is no downloadable papliba agent application/i),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/working alpha is not distributed/i)).toBeInTheDocument();
   });
 
   it('keeps documentation section links inside the docs route', async () => {
@@ -56,7 +54,7 @@ describe('Papliba product site', () => {
     await user.click(screen.getByRole('link', { name: 'Technology' }));
 
     expect(
-      screen.getByRole('heading', { name: /start with what is true today/i }),
+      screen.getByRole('heading', { name: /public facts. private implementation/i }),
     ).toBeInTheDocument();
     expect(scrollIntoView).toHaveBeenCalled();
   });
@@ -68,7 +66,7 @@ describe('Papliba product site', () => {
     await user.click(screen.getByRole('link', { name: /skip to content/i }));
 
     expect(
-      screen.getByRole('heading', { name: /a thin interface over the real pi runtime/i }),
+      screen.getByRole('heading', { name: /a controlled route from intent to execution/i }),
     ).toBeInTheDocument();
     await waitFor(() => expect(document.getElementById('main-content')).toHaveFocus());
   });

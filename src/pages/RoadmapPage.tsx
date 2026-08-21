@@ -4,51 +4,51 @@ import { product } from '../content/product';
 
 const phases = [
   {
-    status: 'NOW',
-    title: 'Make the direction concrete',
-    version: '0.8 · architecture preview',
+    status: 'PUBLIC',
+    title: 'Make the system legible',
+    version: '0.8 · public foundation',
     state: 'complete',
     items: [
       'Product story and design principles',
       'React product and documentation site',
-      'Proposed system architecture',
+      'Documented system architecture',
       'CI, Pages, tests, and contribution workflow',
     ],
   },
   {
-    status: 'NEXT',
-    title: 'Prove the connection',
-    version: '0.9 · technical spike',
-    state: 'next',
+    status: 'ALPHA',
+    title: 'Prove controlled execution',
+    version: 'Private working alpha',
+    state: 'active',
     items: [
-      'Minimal ASP.NET Core loopback companion',
-      'Start and stop a Pi RPC child process',
-      'Map JSONL commands and streaming events',
-      'Render one read-only session timeline',
+      'React agent-operations workspace',
+      'ASP.NET Core companion and Pi RPC lifecycle',
+      'Read-only workspace runtime policy',
+      'Approval-gated workflows and event timeline',
     ],
   },
   {
-    status: 'THEN',
-    title: 'Build the useful loop',
-    version: '0.10 · private alpha',
-    state: 'planned',
+    status: 'NEXT',
+    title: 'Make the alpha durable',
+    version: 'Product hardening',
+    state: 'next',
     items: [
-      'Prompt, abort, steering, and follow-up controls',
-      'Tool activity and file-change inspection',
-      'Workspace and session selection',
-      'Installable local packaging',
+      'Persistent run history and audit evidence',
+      'Identity and workspace access controls',
+      'Policy-driven approval rules',
+      'Installable packaging and update path',
     ],
   },
   {
     status: 'LATER',
-    title: 'Open the surface',
-    version: 'Beyond the first usable alpha',
+    title: 'Harden for organizations',
+    version: 'Enterprise readiness',
     state: 'planned',
     items: [
-      'Extension contribution points',
-      'Reusable workflow and view presets',
-      'Accessibility and performance hardening',
-      'Cross-platform release automation',
+      'Organization administration and entitlements',
+      'Deployment and environment policy',
+      'Reusable workflow governance',
+      'Cross-platform release operations',
     ],
   },
 ] as const;
@@ -59,10 +59,10 @@ export function RoadmapPage() {
       <section className="page-hero roadmap-hero section-grid-bg">
         <div className="shell page-hero__inner">
           <p className="eyebrow">PUBLIC ROADMAP</p>
-          <h1>Earn the interface one boundary at a time.</h1>
+          <h1>The boundary is proven. Now harden the product.</h1>
           <p>
-            Papliba begins with architecture, then proves the smallest real Pi connection before
-            expanding the UI. Sequence matters more than invented release dates.
+            A working private alpha now connects the control plane to a real local runtime. The
+            roadmap moves from that proof toward durable, governed team operations.
           </p>
         </div>
       </section>
@@ -72,6 +72,9 @@ export function RoadmapPage() {
           <div className="roadmap-legend">
             <span>
               <i className="legend-dot legend-dot--complete" /> Available
+            </span>
+            <span>
+              <i className="legend-dot legend-dot--active" /> Active alpha
             </span>
             <span>
               <i className="legend-dot legend-dot--next" /> Next focus
@@ -98,7 +101,7 @@ export function RoadmapPage() {
                   <ul>
                     {phase.items.map((item) => (
                       <li key={item}>
-                        {phase.state === 'complete' ? (
+                        {phase.state === 'complete' || phase.state === 'active' ? (
                           <CheckIcon />
                         ) : (
                           <span className="open-check" />
@@ -123,7 +126,7 @@ export function RoadmapPage() {
           <div className="release-policy__copy">
             <p>
               Papliba uses Semantic Versioning and a changelog. Pre-1.0 releases may change the
-              architecture, but each release must state what is usable and what remains proposed.
+              architecture, but each release must state what is usable and what remains planned.
             </p>
             <a
               className="text-link"
@@ -140,11 +143,11 @@ export function RoadmapPage() {
       <section className="section roadmap-cta-section section-grid-bg">
         <div className="shell roadmap-cta">
           <div>
-            <p className="eyebrow">THE NEXT PROOF</p>
-            <h2>Connect one local Pi session—honestly and securely.</h2>
+            <p className="eyebrow">THE NEXT LAYER</p>
+            <h2>Turn a working alpha into a durable operating system.</h2>
             <p>
-              The technical spike will validate process ownership, event mapping, and the browser
-              trust boundary before the interface grows.
+              Persistence, identity, policy, and packaging come next—without weakening the local
+              execution boundary already validated by the alpha.
             </p>
           </div>
           <div className="roadmap-cta__actions">
@@ -157,7 +160,7 @@ export function RoadmapPage() {
               target="_blank"
               rel="noreferrer"
             >
-              Watch on GitHub <ExternalIcon />
+              Follow the public roadmap <ExternalIcon />
             </a>
           </div>
         </div>

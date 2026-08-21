@@ -17,8 +17,8 @@ export function ArchitectureDiagram({ compact = false }: ArchitectureDiagramProp
   return (
     <figure className={`architecture-figure${compact ? ' architecture-figure--compact' : ''}`}>
       <figcaption>
-        <span className="diagram-kicker">PROPOSED SYSTEM</span>
-        <span>Local-first by design</span>
+        <span className="diagram-kicker">PRIVATE ALPHA BOUNDARY</span>
+        <span>Local execution, explicit control</span>
       </figcaption>
       <div className="architecture-flow">
         <section className="architecture-node architecture-node--interface">
@@ -36,7 +36,7 @@ export function ArchitectureDiagram({ compact = false }: ArchitectureDiagramProp
           </div>
         </section>
 
-        <FlowArrow label="typed events" />
+        <FlowArrow label="HTTP + events" />
 
         <section className="architecture-node architecture-node--bridge">
           <div className="node-number">02</div>
@@ -47,7 +47,7 @@ export function ArchitectureDiagram({ compact = false }: ArchitectureDiagramProp
           <h3>Papliba bridge</h3>
           <p>Process lifecycle, event relay, permissions</p>
           <div className="node-tags">
-            <span>WebSocket</span>
+            <span>REST + SSE</span>
             <span>ASP.NET Core</span>
           </div>
         </section>

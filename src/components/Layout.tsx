@@ -84,7 +84,7 @@ export function Layout() {
         <div className="shell site-footer__inner">
           <div>
             <Brand />
-            <p>A community-built interface for Pi. Currently an architecture preview.</p>
+            <p>A calm control plane for visible, reviewable agent work.</p>
           </div>
           <div className="footer-links">
             <NavLink to="/docs">Documentation</NavLink>

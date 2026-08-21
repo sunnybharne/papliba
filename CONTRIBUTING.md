@@ -1,6 +1,8 @@
 # Contributing to Papliba
 
-Papliba is in architecture preview. Contributions that clarify the product boundary, test assumptions, improve accessibility, or prepare the connection spike are welcome.
+This Apache-2.0 repository contains Papliba's public site and documentation. Contributions that
+improve public product communication, accessibility, and documentation are welcome; the working
+application is maintained separately in private alpha.
 
 ## Before opening code
 
@@ -18,7 +20,7 @@ npm run dev
 
 - Create a focused branch from `main`.
 - Use [Conventional Commits](https://www.conventionalcommits.org/), for example `feat: add connection status card` or `docs: clarify rpc ownership`.
-- Keep claims honest: use **available**, **proposed**, or **planned** consistently.
+- Keep claims honest: distinguish **public**, **private alpha**, **validated**, and **planned** work.
 - Do not mix unrelated formatting or refactors into a feature.
 
 Husky checks staged files before commit and validates the commit message. CI remains authoritative.

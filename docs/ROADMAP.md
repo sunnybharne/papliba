@@ -1,53 +1,64 @@
 # Roadmap
 
-Papliba plans work by evidence rather than invented dates. A phase advances when its exit criteria are demonstrated and documented.
+Papliba plans work by evidence rather than invented dates. A phase advances when its exit criteria
+are demonstrated and documented.
 
-## 0.8 — Architecture preview
+## Public foundation
 
 Status: **available**
 
 - [x] Publish the product direction and design principles.
-- [x] Replace the discarded prototype with a clean React and Vite foundation.
-- [x] Document the proposed browser, companion, and Pi RPC boundaries.
-- [x] Add tests, formatting, linting, type checking, Git hooks, CI, and Pages deployment.
-- [x] Preserve the discarded prototype on `archive/v0.7.0`.
+- [x] Build the React and Vite product and documentation site.
+- [x] Document the browser, companion, and Pi RPC boundaries.
+- [x] Add tests, formatting, linting, type checking, CI, and Pages deployment.
 
-Exit evidence: a public, versioned product site and repository whose claims distinguish current capabilities from planned work.
+Exit evidence: a public, versioned site whose claims distinguish public material, private
+implementation, and future work.
 
-## 0.9 — Connection spike
+## Local boundary
+
+Status: **validated in private alpha**
+
+- [x] Build a React operations workspace.
+- [x] Manage a Pi RPC process through an ASP.NET Core companion.
+- [x] Preserve commands and streamed runtime events.
+- [x] Apply a controlled read-only workspace policy.
+
+Exit evidence: a tested private application demonstrates the client, companion, and runtime
+boundary without publishing private source.
+
+## First useful loop
+
+Status: **active private alpha**
+
+- [x] Run controlled read-only workflows.
+- [x] Display live activity and reviewable outcomes.
+- [x] Demonstrate an explicit approval checkpoint.
+- [x] Make live Pi RPC execution opt-in.
+
+Exit evidence: a user can start, follow, approve, stop, and review a bounded workflow in the
+private alpha.
+
+## Distribution hardening
 
 Status: **next**
 
-- [ ] Create a minimal ASP.NET Core loopback companion.
-- [ ] Start and stop `pi --mode rpc` without corrupting stdout JSONL.
-- [ ] Correlate commands, responses, and ordered streaming events.
-- [ ] Implement origin checks and an ephemeral browser token.
-- [ ] Render one real read-only Pi session timeline in React.
-- [ ] Document packaging, performance, and failure behavior.
+- [ ] Add durable run history and restart recovery.
+- [ ] Add authentication, origin controls, and stronger process isolation.
+- [ ] Produce a safe installable package and update path.
+- [ ] Design broader runtime controls and file-change approvals.
 
-Exit evidence: a reproducible demo with automated protocol tests and a recorded threat-model review.
-
-## 0.10 — Private alpha
-
-Status: **planned**
-
-- [ ] Send prompts and display streamed text.
-- [ ] Support abort, steering, and follow-up controls.
-- [ ] Render tool activity and failures in sequence.
-- [ ] Inspect file changes in an explicitly selected workspace.
-- [ ] Start or resume a session.
-- [ ] Produce an installable local development package.
-
-Exit evidence: invited users can complete a real coding session and recover from a companion or Pi process restart.
+Exit evidence: the application passes a threat-model review and can be distributed, updated, and
+recovered safely.
 
 ## Later
 
 Status: **uncommitted direction**
 
-- extension contribution points;
-- reusable views and workflow presets;
-- cross-platform installers and updates;
+- organization identity, policy, and audit administration;
+- reusable workflows and governed presets;
 - accessibility and performance hardening;
-- broader session and model controls.
+- cross-platform distribution and release operations.
 
-Later items are not promises. They should become versioned work only after the first useful session loop is validated.
+Later items are not promises. They become versioned work only when the current evidence gate is
+complete.

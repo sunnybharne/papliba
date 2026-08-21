@@ -2,11 +2,14 @@
 
 ## One sentence
 
-Papliba is a planned local-first control surface for Pi that makes agent activity visible, reviewable, and easier to shape.
+Papliba is a local-first agent operations workspace that helps teams launch, follow, review, and
+govern agent workflows.
 
 ## Product status
 
-`0.8.0-alpha.1` is an architecture preview. It includes the product and documentation site, design principles, proposed system architecture, public roadmap, and contributor foundation. It does not include a working agent connection, local companion, or interactive session UI.
+The public `0.8.0-alpha.1` repository contains the website and documentation. A separate working
+private alpha validates the local companion, Pi RPC execution, live read-only activity, and an
+explicit approval demonstration. It is not publicly downloadable or production-ready.
 
 ## Problem
 
@@ -44,19 +47,19 @@ Review and approval surfaces should appear at the point where a consequential ac
 
 The first application should prove one excellent session loop. Plugin systems and broad customization come after the core boundary is safe and usable.
 
-## First useful application scope
+## Working private alpha
 
-The first usable alpha should be able to:
+The private alpha currently demonstrates:
 
-- connect to one local Pi RPC process;
-- start or resume a session in an explicitly selected workspace;
-- send a prompt and stream the response;
-- render tool activity and errors in sequence;
-- abort, steer, and follow up using supported RPC commands;
-- show file changes before the user proceeds;
-- expose connection and process state without hiding failures.
+- a React operations workspace backed by a local companion;
+- controlled read-only workflows;
+- opt-in Pi RPC execution with live activity;
+- an explicit approval demonstration and reviewable outcomes.
 
-Out of scope for the first usable alpha:
+It is not publicly downloadable or production-ready. Durable records, authentication, stronger
+process isolation, safe distribution, and mutating tools remain future work.
+
+Out of scope for the current alpha:
 
 - a hosted Papliba cloud service;
 - multi-user collaboration;
@@ -64,16 +67,16 @@ Out of scope for the first usable alpha:
 - a general workflow marketplace;
 - reimplementation of Pi extensions or model providers.
 
-## Success criteria for the technical spike
+## Requirements before public distribution
 
-The architecture advances only if a spike can demonstrate all of the following:
+The application should not become a public download until it can demonstrate all of the following:
 
-1. an ASP.NET Core process starts Pi in RPC mode and shuts it down cleanly;
-2. stdout stays valid JSONL while stderr is captured separately;
-3. request IDs and streaming events survive the relay without losing ordering;
-4. the browser connects only through a loopback, origin-checked endpoint;
-5. one session timeline renders from real Pi events;
-6. disconnects and child-process failures are visible and recoverable.
+1. durable run history and recovery survive application restarts;
+2. authentication and origin controls protect the local boundary;
+3. process isolation and workspace policy are reviewed for distribution;
+4. the install and update path is safe, signed, and reversible;
+5. runtime failures remain visible and recoverable;
+6. mutating tools require explicit, inspectable approval.
 
 ## Naming
 

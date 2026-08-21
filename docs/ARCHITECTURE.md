@@ -1,16 +1,17 @@
-# Proposed architecture
+# Validated alpha architecture
 
-Status: **proposed**
+Status: **validated in private alpha**
 
 Decision record: [ADR-001](decisions/001-runtime-boundary.md)
 
-Applies after: `0.8.0-alpha.1` architecture preview
+Scope: public reference for the private alpha boundary
 
 ## Context
 
-The current repository builds a static React product and documentation site. GitHub Pages can host those assets, but a browser page cannot securely spawn a local Pi process, access a workspace, or hold operating-system authority.
-
-The future application therefore needs a trusted local boundary. Pi already exposes a language-neutral RPC mode for applications, IDEs, and custom UIs. Papliba should use that contract rather than reconstruct the coding agent from lower-level packages.
+This public repository builds only the React product and documentation site. The working
+application is maintained separately and uses a trusted local boundary because a browser page
+cannot safely launch Pi or access a workspace. The private alpha validates the React client →
+local companion → Pi RPC separation.
 
 ## System view
 
@@ -23,7 +24,7 @@ flowchart LR
     end
 
     subgraph Local[Papliba local companion]
-      Transport[SignalR / WebSocket endpoint]
+      Transport[Local command and event API]
       Policy[Origin, workspace, and permission policy]
       Process[Pi process and session manager]
       Transport <--> Policy
@@ -75,7 +76,8 @@ Owns:
 - translating between the browser transport and Pi RPC without inventing agent behavior;
 - health, version, and compatibility information.
 
-The browser transport is a Papliba decision. SignalR is the leading C# implementation choice because it supports streaming, reconnect behavior, and typed hubs; a plain WebSocket remains a valid simpler alternative until the technical spike is measured.
+Browser transport is an application implementation detail. The public architectural commitment is
+the trusted local companion boundary; Pi RPC remains the runtime contract.
 
 ### Pi RPC process
 
@@ -110,7 +112,7 @@ The Papliba envelope should add transport metadata—connection ID, sequence num
 
 ## Security posture
 
-The local companion will follow these defaults:
+Before public distribution, the local companion must satisfy these requirements:
 
 - listen on loopback only;
 - reject unexpected `Origin` headers;
@@ -122,11 +124,13 @@ The local companion will follow these defaults:
 - apply resource limits and maximum message sizes;
 - redact secrets from application logs.
 
-Serving the production React assets from the companion under the same origin is preferable for the installable application. GitHub Pages remains appropriate for the public product and documentation preview only.
+GitHub Pages remains appropriate for the public product and documentation site. The application
+itself is private and is not distributed from this repository.
 
 ## Versioning the boundary
 
-Papliba will version its browser-to-companion protocol separately from the product package. The initial handshake should return:
+Before public distribution, Papliba should version its browser-to-companion protocol separately.
+An illustrative handshake is:
 
 ```json
 {
@@ -155,7 +159,9 @@ Rejected for the initial product. The lower-level package supplies the agent loo
 
 ### Node companion using the Pi SDK
 
-Viable and officially recommended for TypeScript applications. The current proposal chooses ASP.NET Core so C# has a meaningful role and the local security/process boundary is explicit. The technical spike should revisit this choice if packaging or protocol maintenance is substantially worse than the Node alternative.
+Viable and officially recommended for TypeScript applications. The working alpha retains ASP.NET
+Core so the local security/process boundary stays explicit. Revisit that choice only if packaging
+or maintenance costs block safe distribution.
 
 ### Experimental Pi client/server transport
 
@@ -169,4 +175,5 @@ Deferred. Pi's experimental browser client and server packages are evolving and 
 - [Experimental Pi client](https://github.com/earendil-works/pi/blob/main/packages/client/README.md)
 - [Experimental Pi server](https://github.com/earendil-works/pi/blob/main/packages/server/README.md)
 
-SignalR/WebSocket and ASP.NET Core are Papliba design decisions inferred from the product requirements; they are not Pi RPC requirements.
+The browser transport and ASP.NET Core are Papliba design decisions; they are not Pi RPC
+requirements.
