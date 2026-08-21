@@ -1,13 +1,13 @@
-name: Product idea
-description: Propose a product, documentation, or contributor improvement.
+name: Website or documentation idea
+description: Propose an improvement to the public Papliba site, docs, or repository tooling.
 title: 'idea: '
 labels: [enhancement]
 body:
   - type: textarea
     id: problem
     attributes:
-      label: What problem should Papliba solve?
-      description: Describe the situation before describing a feature.
+      label: What public-site or documentation problem should we solve?
+      description: Describe the situation before proposing a change. Do not paste or attach private application or enterprise code.
     validations:
       required: true
 
@@ -26,8 +26,6 @@ body:
       options:
         - Product site
         - Documentation
-        - Proposed local companion
-        - Proposed agent interface
         - Contributor workflow
         - Other
     validations:

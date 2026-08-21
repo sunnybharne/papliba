@@ -17,6 +17,8 @@
 
 - [ ] This change does not present planned behavior as available.
 - [ ] Architecture or roadmap documents were updated if the boundary changed.
+- [ ] No private application or enterprise code, customer data, credentials, or session content was added.
+- [ ] Material copied from a private repository received explicit publication and licensing review.
 
 ## Screenshots
 

@@ -6,7 +6,11 @@ Papliba is a planned local-first control surface for Pi that makes agent activit
 
 ## Product status
 
-`0.8.0-alpha.1` is an architecture preview. It includes the product and documentation site, design principles, proposed system architecture, public roadmap, and contributor foundation. It does not include a working agent connection, local companion, or interactive session UI.
+`0.8.0-alpha.1` is an architecture preview. It includes the product and documentation site, design principles, proposed system architecture, public roadmap, and public contribution foundation. It does not include a working agent connection, local companion, or interactive session UI.
+
+## Repository model
+
+The public `papliba` repository owns the product website, public documentation, architecture, roadmap, and intentionally published interfaces. The working application and enterprise modules are developed in separate private repositories under separate proprietary terms. See [Repository boundaries](REPOSITORY_BOUNDARIES.md).
 
 ## Problem
 
@@ -20,7 +24,7 @@ Papliba initially targets:
 
 1. developers who like Pi's agent harness but want a visual session surface;
 2. people who need clearer review and approval moments than a terminal transcript provides;
-3. contributors who want to experiment with agent UX without rebuilding an agent runtime.
+3. technical evaluators who want to understand the product architecture and trust boundaries.
 
 ## Product principles
 

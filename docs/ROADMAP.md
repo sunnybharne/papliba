@@ -2,6 +2,8 @@
 
 Papliba plans work by evidence rather than invented dates. A phase advances when its exit criteria are demonstrated and documented.
 
+This public roadmap communicates product direction and verifiable release status. Implementation after the architecture preview occurs in private product repositories; public roadmap detail will not expose proprietary code, customer information, or sensitive security design.
+
 ## 0.8 — Architecture preview
 
 Status: **available**

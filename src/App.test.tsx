@@ -49,6 +49,17 @@ describe('Papliba product site', () => {
     ).toBeInTheDocument();
   });
 
+  it('states the public and private repository boundary', () => {
+    renderApp('/docs');
+
+    expect(
+      screen.getByRole('heading', { name: /public documentation, private product/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/apache 2\.0 applies to files in this public repository/i),
+    ).toBeInTheDocument();
+  });
+
   it('keeps documentation section links inside the docs route', async () => {
     const user = userEvent.setup();
     renderApp('/docs');
