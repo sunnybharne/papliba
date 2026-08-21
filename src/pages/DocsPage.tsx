@@ -40,14 +40,15 @@ export function DocsPage() {
         <div className="shell docs-hero__inner">
           <div>
             <p className="eyebrow">DOCUMENTATION</p>
-            <h1>Start with what is true today.</h1>
+            <h1>Public facts. Private implementation.</h1>
             <p>
-              Papliba is in architecture preview. These docs separate the current website from the
-              proposed local application so contributors can make decisions from the same facts.
+              These docs separate the public product direction from the working private alpha, so
+              readers can understand the system without implying that its source or binaries are
+              available here.
             </p>
           </div>
           <div className="docs-version-card">
-            <span>CURRENT VERSION</span>
+            <span>PUBLIC SITE VERSION</span>
             <strong>v{product.version}</strong>
             <p>{product.phase}</p>
           </div>
@@ -70,7 +71,7 @@ export function DocsPage() {
             target="_blank"
             rel="noreferrer"
           >
-            View source <ExternalIcon />
+            View public site source <ExternalIcon />
           </a>
         </aside>
 
@@ -79,15 +80,15 @@ export function DocsPage() {
             <p className="docs-overline">OVERVIEW</p>
             <h2>Start here</h2>
             <p className="docs-lead">
-              Papliba is an open-source product direction for a visual Pi interface. The goal is to
-              make agent activity easier to follow and review while preserving Pi as the underlying
-              coding-agent runtime.
+              Papliba is a control plane for visible, reviewable agent work. The public site
+              explains the product and its boundaries; a separate private alpha exercises those
+              ideas against a real local runtime.
             </p>
             <div className="docs-note docs-note--lime">
               <strong>What you can use now</strong>
               <p>
-                The product website, architecture decision, roadmap, and contributor foundation.
-                There is no downloadable Papliba agent application in this release.
+                The public product website, architecture decision, roadmap, and contributor
+                foundation. The working alpha is not distributed from this repository.
               </p>
             </div>
           </section>
@@ -102,14 +103,14 @@ export function DocsPage() {
                 <p>React/Vite static site deployed to GitHub Pages.</p>
               </div>
               <div>
-                <span className="matrix-state matrix-state--decision">PROPOSED</span>
-                <strong>Local companion architecture</strong>
-                <p>ASP.NET Core bridge between the browser and Pi RPC.</p>
+                <span className="matrix-state matrix-state--decision">WORKING ALPHA</span>
+                <strong>Agent operations application</strong>
+                <p>Private React workspace and ASP.NET Core companion connected to Pi RPC.</p>
               </div>
               <div>
-                <span className="matrix-state matrix-state--planned">PLANNED</span>
-                <strong>Interactive agent workspace</strong>
-                <p>Sessions, streaming activity, changes, and approval surfaces.</p>
+                <span className="matrix-state matrix-state--planned">NEXT</span>
+                <strong>Enterprise hardening</strong>
+                <p>Durable audit, identity, policy, packaging, and deployment controls.</p>
               </div>
             </div>
           </section>
@@ -133,12 +134,12 @@ export function DocsPage() {
                 </ul>
               </div>
               <div>
-                <span>PROPOSED</span>
-                <h3>Local application</h3>
+                <span>PRIVATE ALPHA</span>
+                <h3>Operations application</h3>
                 <ul>
-                  <li>Same React client</li>
+                  <li>React operations workspace</li>
                   <li>ASP.NET Core companion</li>
-                  <li>SignalR or WebSocket transport</li>
+                  <li>HTTP API and event stream</li>
                   <li>Pi RPC child process</li>
                 </ul>
               </div>
@@ -147,7 +148,7 @@ export function DocsPage() {
               <strong>Why the companion is necessary</strong>
               <p>
                 A website hosted on GitHub Pages cannot spawn a local process or safely access a
-                workspace. The future companion provides that trusted local boundary.
+                workspace. The private alpha companion provides that trusted local boundary.
               </p>
             </div>
           </section>
@@ -220,7 +221,7 @@ export function DocsPage() {
               <a href={product.piRpcDocs} target="_blank" rel="noreferrer">
                 <span>
                   <strong>Official Pi RPC docs</strong>
-                  <small>The integration contract Papliba plans to use</small>
+                  <small>The runtime contract used by the private alpha</small>
                 </span>
                 <ExternalIcon />
               </a>

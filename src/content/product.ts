@@ -1,7 +1,7 @@
 export const product = {
   name: 'Papliba',
   version: __APP_VERSION__,
-  phase: 'Architecture preview',
+  phase: 'Private alpha active',
   repository: 'https://github.com/sunnybharne/papliba',
   site: 'https://sunnybharne.github.io/papliba/',
   piDocs: 'https://pi.dev/docs/latest/',

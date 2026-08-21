@@ -7,36 +7,36 @@ import { product } from '../content/product';
 const problems = [
   {
     number: '01',
-    title: 'See the work',
-    copy: 'Follow tool calls, file changes, and agent decisions in one calm activity stream.',
+    title: 'Know what is running',
+    copy: 'Follow every run, runtime event, and result without reconstructing the story from terminal output.',
   },
   {
     number: '02',
-    title: 'Keep the checkpoints',
-    copy: 'Put review and approval moments exactly where consequential actions happen.',
+    title: 'Approve the boundary',
+    copy: 'Place human review exactly where a workflow crosses from analysis into consequential action.',
   },
   {
     number: '03',
-    title: 'Shape your workflow',
-    copy: 'Grow from a focused Pi interface into a workspace your community can extend.',
+    title: 'Keep the evidence',
+    copy: 'Give operators and teams a shared, inspectable record of what happened and why.',
   },
 ] as const;
 
 const principles = [
   {
-    label: 'LOCAL BY DEFAULT',
+    label: 'LOCAL EXECUTION',
     title: 'Authority stays close',
-    copy: 'The proposed companion runs on your machine. Workspace access and process control do not move to a hosted Papliba service.',
+    copy: 'The companion runs beside the workspace. Process control and local access stay inside the boundary you operate.',
   },
   {
-    label: 'TRANSPARENT',
+    label: 'AUDITABLE BY DESIGN',
     title: 'Nothing important is hidden',
-    copy: 'Commands, tool activity, edits, and errors should be inspectable—not reduced to a mysterious loading spinner.',
+    copy: 'Commands, tool activity, decisions, and errors remain inspectable instead of disappearing behind a loading state.',
   },
   {
-    label: 'PI, NOT A REIMPLEMENTATION',
-    title: 'One agent, another surface',
-    copy: 'Papliba plans to use Pi RPC so Pi remains responsible for the agent loop, tools, sessions, and models.',
+    label: 'RUNTIME DISCIPLINE',
+    title: 'Orchestrate, do not imitate',
+    copy: 'Papliba uses Pi RPC as a technical boundary, leaving the agent loop, tools, sessions, and models with the runtime.',
   },
 ] as const;
 
@@ -48,27 +48,27 @@ export function HomePage() {
           <div className="hero__copy">
             <div className="status-kicker">
               <span className="status-kicker__dot" />
-              Open source · {product.phase}
+              Public direction · {product.phase}
             </div>
             <h1>
-              Your Pi agent,
-              <span>with a window.</span>
+              Agent work,
+              <span>with a control plane.</span>
             </h1>
             <p className="hero__lead">
-              Papliba is a planned local-first control surface for Pi—designed to make agent
-              activity visible, reviewable, and easier to shape.
+              Papliba gives teams one calm place to start, observe, and approve agentic
+              workflows—while execution stays close to the workspace.
             </p>
             <div className="hero__actions">
               <Link className="button button--primary" to="/architecture">
-                Explore the architecture <ArrowRightIcon />
+                See how it works <ArrowRightIcon />
               </Link>
               <Link className="button button--ghost" to="/docs">
                 Read the docs
               </Link>
             </div>
             <p className="hero__honesty">
-              <span>v{product.version}</span> Product direction and system design—not a working
-              agent UI yet.
+              <span>v{product.version}</span> The public site documents the direction. A working
+              private alpha is in active development.
             </p>
           </div>
           <div className="hero__visual">
@@ -82,16 +82,16 @@ export function HomePage() {
       <section className="section problem-section">
         <div className="shell">
           <SectionHeading
-            eyebrow="THE PRODUCT IDEA"
-            title="Agents move fast. Understanding should keep up."
-            copy="Papliba is being designed around the moments where a terminal-only workflow becomes hard to scan, explain, or control."
+            eyebrow="THE CONTROL PLANE"
+            title="Fast agents still need deliberate operations."
+            copy="Papliba turns agent execution into a route a team can see, review, and control—from intent to evidence."
           />
           <div className="problem-grid">
             {problems.map((problem) => (
               <article className="problem-card" key={problem.number}>
                 <span className="card-number">{problem.number}</span>
                 <div className="card-glyph" aria-hidden="true">
-                  {problem.number === '01' ? '◎' : problem.number === '02' ? '◇' : '⌘'}
+                  {problem.number === '01' ? '↳' : problem.number === '02' ? '◆' : '≡'}
                 </div>
                 <h3>{problem.title}</h3>
                 <p>{problem.copy}</p>
@@ -105,11 +105,8 @@ export function HomePage() {
         <div className="shell principles-layout">
           <div className="principles-intro">
             <p className="eyebrow">DESIGN PRINCIPLES</p>
-            <h2>A UI should add clarity, not take control away.</h2>
-            <p>
-              These are constraints for the product, not finished features. They will guide every
-              implementation decision.
-            </p>
+            <h2>Clarity is a control, not decoration.</h2>
+            <p>These principles shape the working alpha and every product decision that follows.</p>
             <Link className="text-link" to="/architecture">
               See the trust boundaries <ArrowRightIcon />
             </Link>
@@ -135,12 +132,12 @@ export function HomePage() {
         <div className="shell">
           <div className="status-panel">
             <div className="status-panel__copy">
-              <span className="status-panel__tag">CURRENT RELEASE · v{product.version}</span>
-              <h2>The foundation is public. The application comes next.</h2>
+              <span className="status-panel__tag">PRODUCT STATUS · v{product.version}</span>
+              <h2>The direction is public. The working alpha stays private.</h2>
               <p>
-                This first preview establishes the product story, proposed architecture,
-                contribution workflow, and delivery pipeline. The roadmap separates what exists
-                today from what we intend to build.
+                Papliba now has a functioning control-plane application, local companion, runtime
+                connection, and approval-gated workflows. The implementation remains private while
+                the product principles and technical boundaries stay inspectable here.
               </p>
               <div className="status-panel__actions">
                 <Link className="button button--light" to="/roadmap">
@@ -158,24 +155,26 @@ export function HomePage() {
             </div>
             <div className="release-card">
               <div className="release-card__header">
-                <span>IN THIS PREVIEW</span>
-                <span className="release-state">PUBLISHED</span>
+                <span>PRIVATE ALPHA SIGNAL</span>
+                <span className="release-state">WORKING</span>
               </div>
               <ul>
                 <li>
-                  <CheckIcon /> Product direction
+                  <CheckIcon /> React operations workspace
                 </li>
                 <li>
-                  <CheckIcon /> Proposed architecture
+                  <CheckIcon /> Local C# companion
                 </li>
                 <li>
-                  <CheckIcon /> Contributor documentation
+                  <CheckIcon /> Pi RPC run lifecycle
                 </li>
                 <li>
-                  <CheckIcon /> Automated quality gates
+                  <CheckIcon /> Human approval checkpoints
                 </li>
               </ul>
-              <p>Agent connection and session UI are planned, not included.</p>
+              <p>
+                Private source, packaged downloads, and enterprise modules are not published here.
+              </p>
             </div>
           </div>
         </div>
@@ -183,11 +182,11 @@ export function HomePage() {
 
       <section className="section closing-section section-grid-bg">
         <div className="shell closing-section__inner">
-          <span className="eyebrow">BUILD IN THE OPEN</span>
-          <h2>Papliba is a direction you can inspect from day one.</h2>
+          <span className="eyebrow">OPERATE WITH INTENT</span>
+          <h2>Designed for teams that need more than chat.</h2>
           <p>
-            Read the decisions, challenge the assumptions, or help turn the architecture into a
-            useful Pi interface.
+            Follow the public decisions, inspect the architecture, and watch the control plane
+            mature without exposing the private product implementation.
           </p>
           <div className="hero__actions">
             <a
@@ -196,7 +195,7 @@ export function HomePage() {
               target="_blank"
               rel="noreferrer"
             >
-              Explore the repository <ExternalIcon />
+              Follow the public project <ExternalIcon />
             </a>
             <Link className="button button--ghost" to="/docs">
               Start with the docs

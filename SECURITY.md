@@ -2,7 +2,9 @@
 
 ## Supported versions
 
-Papliba is currently an architecture preview and does not run an agent or local companion. Security fixes apply to the latest code on `main`.
+This public repository contains only the product website and documentation. Security fixes for
+this repository apply to the latest code on `main`; the working application is maintained
+separately in private alpha.
 
 ## Reporting a vulnerability
 
@@ -14,6 +16,9 @@ Include the affected commit or version, impact, reproduction steps, and any sugg
 
 The maintainers aim to acknowledge a complete report within seven days. Response timing is a target, not a service-level agreement.
 
-## Future local companion
+## Private alpha companion
 
-The proposed companion will be security-sensitive because it launches Pi and mediates workspace access. Its implementation must receive explicit review for loopback binding, origin validation, browser authentication, path canonicalization, process isolation, message limits, secret redaction, and safe shutdown before a user-facing alpha is published.
+The companion is security-sensitive because it launches Pi and mediates workspace access. Before
+public distribution, it must receive explicit review for loopback binding, origin validation,
+browser authentication, path canonicalization, process isolation, message limits, secret
+redaction, and safe shutdown.

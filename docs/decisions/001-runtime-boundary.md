@@ -1,6 +1,6 @@
 # ADR-001: Use React, a local ASP.NET Core companion, and Pi RPC
 
-- Status: Proposed
+- Status: Accepted — core boundary validated in private alpha
 - Date: 2026-08-21
 - Decision owners: Papliba maintainers
 
@@ -16,7 +16,8 @@ Use three explicit runtime boundaries:
 2. an ASP.NET Core loopback companion for security, process lifecycle, and transport;
 3. a managed `pi --mode rpc` child process for coding-agent behavior.
 
-The companion will relay typed Papliba events over SignalR or WebSocket and strict JSONL over Pi's standard input/output streams.
+The companion exposes a local command and event API while preserving strict JSONL over Pi's
+standard input/output streams.
 
 ## Consequences
 
@@ -33,8 +34,11 @@ Negative:
 - the project has two implementation languages;
 - the team must safely map and track the Pi RPC contract;
 - local packaging is more complex than a static website;
-- SignalR/WebSocket introduces a second protocol in addition to Pi JSONL.
+- the local command/event API introduces a second protocol in addition to Pi JSONL.
 
 ## Validation
 
-ADR-001 remains proposed until the `0.9` connection spike meets the exit criteria in the [roadmap](../ROADMAP.md). If the C# companion creates unacceptable packaging or maintenance cost, a Node companion using Pi's official SDK is the preferred fallback.
+The private alpha validates the React, local companion, and Pi RPC boundary. Distribution
+security, persistence, recovery, and packaging remain separate release requirements. If the C#
+companion creates unacceptable packaging or maintenance cost, a Node companion using Pi's official
+SDK remains the preferred fallback.
