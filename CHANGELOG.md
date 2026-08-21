@@ -4,6 +4,11 @@ All notable changes to Papliba will be documented here. The project follows [Sem
 
 ## [Unreleased]
 
+### Changed
+
+- Defined Papliba's public documentation repository and separate private application and enterprise repositories.
+- Clarified that Apache 2.0 applies only to files in this public repository.
+
 ## [0.8.0-alpha.1] — 2026-08-21
 
 ### Added

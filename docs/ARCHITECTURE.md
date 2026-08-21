@@ -12,6 +12,8 @@ The current repository builds a static React product and documentation site. Git
 
 The future application therefore needs a trusted local boundary. Pi already exposes a language-neutral RPC mode for applications, IDEs, and custom UIs. Papliba should use that contract rather than reconstruct the coding agent from lower-level packages.
 
+The architecture is documented publicly, while its working React and ASP.NET Core implementation belongs to the private `papliba-app` repository. Organization-level commercial capabilities belong to `papliba-enterprise`. See [Repository boundaries](REPOSITORY_BOUNDARIES.md).
+
 ## System view
 
 ```mermaid

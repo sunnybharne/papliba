@@ -48,7 +48,7 @@ export function HomePage() {
           <div className="hero__copy">
             <div className="status-kicker">
               <span className="status-kicker__dot" />
-              Open source · {product.phase}
+              Public website · {product.phase}
             </div>
             <h1>
               Your Pi agent,
@@ -136,11 +136,12 @@ export function HomePage() {
           <div className="status-panel">
             <div className="status-panel__copy">
               <span className="status-panel__tag">CURRENT RELEASE · v{product.version}</span>
-              <h2>The foundation is public. The application comes next.</h2>
+              <h2>The website is public. Product development continues separately.</h2>
               <p>
                 This first preview establishes the product story, proposed architecture,
-                contribution workflow, and delivery pipeline. The roadmap separates what exists
-                today from what we intend to build.
+                documentation workflow, and delivery pipeline. Product implementation continues in
+                separately licensed private repositories while the public roadmap reports what is
+                available.
               </p>
               <div className="status-panel__actions">
                 <Link className="button button--light" to="/roadmap">
@@ -169,13 +170,13 @@ export function HomePage() {
                   <CheckIcon /> Proposed architecture
                 </li>
                 <li>
-                  <CheckIcon /> Contributor documentation
+                  <CheckIcon /> Public repository boundaries
                 </li>
                 <li>
                   <CheckIcon /> Automated quality gates
                 </li>
               </ul>
-              <p>Agent connection and session UI are planned, not included.</p>
+              <p>Application and enterprise source code are not included in this release.</p>
             </div>
           </div>
         </div>
@@ -183,11 +184,11 @@ export function HomePage() {
 
       <section className="section closing-section section-grid-bg">
         <div className="shell closing-section__inner">
-          <span className="eyebrow">BUILD IN THE OPEN</span>
-          <h2>Papliba is a direction you can inspect from day one.</h2>
+          <span className="eyebrow">FOLLOW THE PRODUCT</span>
+          <h2>The public direction stays visible.</h2>
           <p>
-            Read the decisions, challenge the assumptions, or help turn the architecture into a
-            useful Pi interface.
+            Read the public decisions and roadmap or share feedback while the working product and
+            enterprise modules remain in separately licensed private repositories.
           </p>
           <div className="hero__actions">
             <a
@@ -196,7 +197,7 @@ export function HomePage() {
               target="_blank"
               rel="noreferrer"
             >
-              Explore the repository <ExternalIcon />
+              Explore the public repository <ExternalIcon />
             </a>
             <Link className="button button--ghost" to="/docs">
               Start with the docs

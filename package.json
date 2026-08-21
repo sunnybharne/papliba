@@ -2,7 +2,7 @@
   "name": "papliba",
   "version": "0.8.0-alpha.1",
   "private": true,
-  "description": "A local-first control surface for the Pi coding agent.",
+  "description": "The public product and documentation site for Papliba.",
   "type": "module",
   "homepage": "https://sunnybharne.github.io/papliba/",
   "repository": {

@@ -2,7 +2,7 @@
 
 ## Supported versions
 
-Papliba is currently an architecture preview and does not run an agent or local companion. Security fixes apply to the latest code on `main`.
+The current public release is a website and documentation preview and does not run an agent or local companion. Security fixes apply to the latest public code on `main`.
 
 ## Reporting a vulnerability
 
@@ -16,4 +16,4 @@ The maintainers aim to acknowledge a complete report within seven days. Response
 
 ## Future local companion
 
-The proposed companion will be security-sensitive because it launches Pi and mediates workspace access. Its implementation must receive explicit review for loopback binding, origin validation, browser authentication, path canonicalization, process isolation, message limits, secret redaction, and safe shutdown before a user-facing alpha is published.
+Reports concerning the private Papliba application or enterprise software may use the same private reporting channel; maintainers will route them internally. Never include private source code in a public issue.

@@ -1,10 +1,12 @@
 # Contributing to Papliba
 
-Papliba is in architecture preview. Contributions that clarify the product boundary, test assumptions, improve accessibility, or prepare the connection spike are welcome.
+Papliba is in architecture preview. This public repository accepts contributions to the product website, public documentation, accessibility, and intentionally published interfaces.
+
+The working application and enterprise modules are developed in separate private repositories. Do not submit product implementation, copied private code, customer information, credentials, or private design material here. Read [the repository boundaries](docs/REPOSITORY_BOUNDARIES.md) before proposing a substantial change.
 
 ## Before opening code
 
-For a substantial feature or architecture change, open an issue first. This avoids implementing planned behavior before the boundary and acceptance criteria are agreed.
+For a substantial public-site, documentation, or architecture change, open an issue first. Public architecture proposals do not authorize publishing the corresponding private implementation.
 
 ## Development setup
 
@@ -17,7 +19,7 @@ npm run dev
 ## Branches and commits
 
 - Create a focused branch from `main`.
-- Use [Conventional Commits](https://www.conventionalcommits.org/), for example `feat: add connection status card` or `docs: clarify rpc ownership`.
+- Use [Conventional Commits](https://www.conventionalcommits.org/), for example `feat: improve mobile navigation` or `docs: clarify rpc ownership`.
 - Keep claims honest: use **available**, **proposed**, or **planned** consistently.
 - Do not mix unrelated formatting or refactors into a feature.
 
@@ -35,7 +37,7 @@ For visual changes, check at least one wide and one narrow viewport, keyboard na
 
 A pull request should explain:
 
-1. the user or contributor problem;
+1. the public documentation or website problem;
 2. what changed and what did not;
 3. how the change was verified;
 4. whether documentation, roadmap, or architecture claims changed.
@@ -44,7 +46,7 @@ Screenshots are helpful for visible changes. Never include credentials, local wo
 
 ## Architecture decisions
 
-Changes to a trust boundary, protocol, runtime, or security model require an ADR under `docs/decisions/`. Copy ADR-001's structure and describe the consequences and validation plan.
+Only architecture decisions intentionally approved for public release belong under `docs/decisions/`. Private implementation decisions stay in the applicable private repository and must not be quoted or attached here.
 
 ## Conduct and security
 

@@ -18,6 +18,7 @@ npm run build`;
 
 const docNav = [
   { label: 'Start here', id: 'start-here' },
+  { label: 'Repository model', id: 'repository-model' },
   { label: 'Project status', id: 'project-status' },
   { label: 'Technology', id: 'technology' },
   { label: 'Local development', id: 'local-development' },
@@ -42,8 +43,8 @@ export function DocsPage() {
             <p className="eyebrow">DOCUMENTATION</p>
             <h1>Start with what is true today.</h1>
             <p>
-              Papliba is in architecture preview. These docs separate the current website from the
-              proposed local application so contributors can make decisions from the same facts.
+              These are Papliba's public product documents. Application and enterprise source code
+              are maintained privately and are not part of the current release.
             </p>
           </div>
           <div className="docs-version-card">
@@ -79,9 +80,9 @@ export function DocsPage() {
             <p className="docs-overline">OVERVIEW</p>
             <h2>Start here</h2>
             <p className="docs-lead">
-              Papliba is an open-source product direction for a visual Pi interface. The goal is to
-              make agent activity easier to follow and review while preserving Pi as the underlying
-              coding-agent runtime.
+              Papliba is a publicly documented product direction for a visual Pi interface. The goal
+              is to make agent activity easier to follow and review while preserving Pi as the
+              underlying coding-agent runtime.
             </p>
             <div className="docs-note docs-note--lime">
               <strong>What you can use now</strong>
@@ -92,24 +93,41 @@ export function DocsPage() {
             </div>
           </section>
 
+          <section id="repository-model">
+            <p className="docs-overline">REPOSITORY MODEL</p>
+            <h2>Public documentation, private product</h2>
+            <p>
+              This repository contains the public website, architecture, roadmap, and intentionally
+              published interfaces. The working React application, local companion, and enterprise
+              modules are developed in separate private repositories.
+            </p>
+            <div className="docs-note">
+              <strong>License boundary</strong>
+              <p>
+                Apache 2.0 applies to files in this public repository only. It does not apply to the
+                separately licensed private application or enterprise implementation.
+              </p>
+            </div>
+          </section>
+
           <section id="project-status">
             <p className="docs-overline">STATUS</p>
             <h2>Project status</h2>
             <div className="status-matrix">
               <div>
-                <span className="matrix-state matrix-state--done">AVAILABLE</span>
-                <strong>Product and documentation site</strong>
+                <span className="matrix-state matrix-state--done">PUBLIC</span>
+                <strong>Website and public documentation</strong>
                 <p>React/Vite static site deployed to GitHub Pages.</p>
               </div>
               <div>
-                <span className="matrix-state matrix-state--decision">PROPOSED</span>
-                <strong>Local companion architecture</strong>
-                <p>ASP.NET Core bridge between the browser and Pi RPC.</p>
+                <span className="matrix-state matrix-state--decision">PRIVATE</span>
+                <strong>Application implementation</strong>
+                <p>React client, local companion, Pi integration, and product packaging.</p>
               </div>
               <div>
-                <span className="matrix-state matrix-state--planned">PLANNED</span>
-                <strong>Interactive agent workspace</strong>
-                <p>Sessions, streaming activity, changes, and approval surfaces.</p>
+                <span className="matrix-state matrix-state--planned">PRIVATE</span>
+                <strong>Enterprise implementation</strong>
+                <p>Organization identity, policy, audit, administration, and deployment.</p>
               </div>
             </div>
           </section>
@@ -214,6 +232,17 @@ export function DocsPage() {
                 <span>
                   <strong>Roadmap</strong>
                   <small>Now, next, and later without invented dates</small>
+                </span>
+                <ExternalIcon />
+              </a>
+              <a
+                href={`${product.repository}/blob/main/docs/REPOSITORY_BOUNDARIES.md`}
+                target="_blank"
+                rel="noreferrer"
+              >
+                <span>
+                  <strong>Repository boundaries</strong>
+                  <small>Public and private ownership, licensing, and publishing rules</small>
                 </span>
                 <ExternalIcon />
               </a>

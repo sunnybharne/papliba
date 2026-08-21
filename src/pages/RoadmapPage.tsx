@@ -62,7 +62,9 @@ export function RoadmapPage() {
           <h1>Earn the interface one boundary at a time.</h1>
           <p>
             Papliba begins with architecture, then proves the smallest real Pi connection before
-            expanding the UI. Sequence matters more than invented release dates.
+            expanding the UI. Implementation happens in private product repositories while this
+            public roadmap reports verifiable progress. Sequence matters more than invented release
+            dates.
           </p>
         </div>
       </section>

@@ -84,13 +84,13 @@ export function Layout() {
         <div className="shell site-footer__inner">
           <div>
             <Brand />
-            <p>A community-built interface for Pi. Currently an architecture preview.</p>
+            <p>Official website and public documentation for Papliba.</p>
           </div>
           <div className="footer-links">
             <NavLink to="/docs">Documentation</NavLink>
             <NavLink to="/architecture">Architecture</NavLink>
             <a href={`${product.repository}/blob/main/LICENSE`} target="_blank" rel="noreferrer">
-              Apache 2.0
+              Website source: Apache 2.0
             </a>
           </div>
           <div className="version-block">
