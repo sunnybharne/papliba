@@ -1,6 +1,6 @@
 # Papliba Azure Deployment Plan
 
-Status: Awaiting Approval
+Status: Validated
 
 ## Objective
 
@@ -15,9 +15,10 @@ Host the Papliba product site on Azure and move the Sunny Bharne portfolio site 
 - The Azure tenant is `Papliba`.
 - The Azure subscription intended for web production is `Prod` (`7a98d55d-42a1-41f0-93da-3855d550a94d`).
 - The existing production web resource group is `rg-prod-web-swc`.
-- The only existing Static Web App in that subscription is `swa-sunnybharne-portfolio-001`, currently connected to `sunnybharne/sunnybharne`.
-- `www.sunnybharne.com` currently resolves to the existing Azure Static Web App.
-- The `sunnybharne/sunnybharne` repository has GitHub Pages enabled but still uses the legacy branch source.
+- The existing Sunny portfolio Static Web App is `swa-sunnybharne-portfolio-001`, connected to `sunnybharne/sunnybharne`.
+- `www.sunnybharne.com` DNS has been changed to GitHub Pages (`sunnybharne.github.io`), and GitHub certificate issuance is still pending.
+- The `sunnybharne/sunnybharne` repository now deploys to GitHub Pages with a GitHub Actions workflow.
+- `swa-papliba-prod-001` does not exist yet in Azure.
 
 ## Proposed Target State
 
@@ -49,7 +50,7 @@ Host the Papliba product site on Azure and move the Sunny Bharne portfolio site 
 2. Commit and push the Papliba changes:
    - Allow Vite base path to be controlled with `VITE_BASE_PATH`.
    - Update the product URL references to `https://papliba.com/`.
-3. After approval, create a new Azure Static Web App:
+3. Create a new Azure Static Web App:
    - `swa-papliba-prod-001` in `rg-prod-web-swc` under the `Prod` subscription.
    - Connect deployment from `sunnybharne/papliba` using a GitHub Actions secret.
 4. Add or verify GitHub Actions deployment for Papliba:
@@ -80,5 +81,13 @@ Host the Papliba product site on Azure and move the Sunny Bharne portfolio site 
 
 ## Approval
 
-- Pending user approval before Azure resource or DNS changes.
+- Approved by user on 26 August 2026 after confirming Papliba production must be hosted on Azure, not GitHub Pages.
 - Making `pi-agent.nvim` public is separate and requires explicit approval because it changes repository visibility.
+
+## Validation Proof
+
+- 26 August 2026: `npm run format:check` passed.
+- 26 August 2026: `npm run lint` passed.
+- 26 August 2026: `npm run test` passed with 1 test file and 5 tests passing.
+- 26 August 2026: `VITE_BASE_PATH=/ npm run build` passed and generated `dist/`.
+- 26 August 2026: `az provider show --namespace Microsoft.Web --query "resourceTypes[?resourceType=='staticSites'].locations[]" -o tsv` confirmed `Central US` is available for Static Web Apps.
