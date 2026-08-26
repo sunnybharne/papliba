@@ -3,7 +3,7 @@ export const product = {
   version: __APP_VERSION__,
   phase: 'Architecture preview',
   repository: 'https://github.com/sunnybharne/papliba',
-  site: 'https://sunnybharne.github.io/papliba/',
+  site: 'https://papliba.com/',
   piDocs: 'https://pi.dev/docs/latest/',
   piRpcDocs: 'https://pi.dev/docs/latest/rpc/',
 } as const;

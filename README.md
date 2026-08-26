@@ -12,7 +12,7 @@ Papliba is an open-source, local-first control surface for the [Pi coding agent]
 
 ## Explore
 
-- [Product site](https://sunnybharne.github.io/papliba/)
+- [Product site](https://papliba.com/)
 - [Product brief](docs/PRODUCT.md)
 - [Architecture](docs/ARCHITECTURE.md)
 - [Roadmap](docs/ROADMAP.md)
@@ -47,7 +47,7 @@ npm ci
 npm run dev
 ```
 
-The GitHub Pages site uses hash routes and Vite's `/papliba/` base path, so no server-side route fallback is required.
+The GitHub Pages preview uses hash routes and Vite's `/papliba/` base path, so no server-side route fallback is required. The production Azure build sets `VITE_BASE_PATH=/` for the custom domain.
 
 ## Quality checks
 

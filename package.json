@@ -4,7 +4,7 @@
   "private": true,
   "description": "A local-first control surface for the Pi coding agent.",
   "type": "module",
-  "homepage": "https://sunnybharne.github.io/papliba/",
+  "homepage": "https://papliba.com/",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/sunnybharne/papliba.git"
