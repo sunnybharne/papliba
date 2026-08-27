@@ -1,19 +1,20 @@
-# Security policy
+# Security Policy
 
-## Supported versions
+Papliba is an early-stage local-first workflow builder. Security issues matter because workflow tools can eventually handle files, commands, provider API keys, tokens, and private work content.
 
-Papliba is currently an architecture preview and does not run an agent or local companion. Security fixes apply to the latest code on `main`.
+## Supported Versions
 
-## Reporting a vulnerability
+Only the latest commit on `main` is currently supported.
 
-Do not open a public issue for a suspected vulnerability. Use GitHub's **Security → Report a vulnerability** flow for the repository:
+## Reporting A Vulnerability
 
-<https://github.com/sunnybharne/papliba/security/advisories/new>
+Please do not open a public issue for a security vulnerability.
 
-Include the affected commit or version, impact, reproduction steps, and any suggested mitigation. Avoid including real credentials, private workspace files, or session transcripts.
+Use GitHub's private vulnerability reporting if available. If that is not available, open a minimal public issue saying that you need a private security contact, without including exploit details.
 
-The maintainers aim to acknowledge a complete report within seven days. Response timing is a target, not a service-level agreement.
+## Security Expectations
 
-## Future local companion
-
-The proposed companion will be security-sensitive because it launches Pi and mediates workspace access. Its implementation must receive explicit review for loopback binding, origin validation, browser authentication, path canonicalization, process isolation, message limits, secret redaction, and safe shutdown before a user-facing alpha is published.
+- Do not commit real credentials, OAuth tokens, passwords, or private content.
+- Do not store secrets in plain text.
+- Use OS-backed secure storage for future credentials.
+- Treat local files, workflow inputs, generated outputs, and command execution as untrusted until clearly approved.
