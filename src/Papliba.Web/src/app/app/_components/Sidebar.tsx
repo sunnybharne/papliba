@@ -138,6 +138,7 @@ export function Sidebar({
     >
       <div className="brand-row">
         <div className="brand-name">
+          <WorkflowMark />
           <strong>Papliba</strong>
         </div>
         <div className="brand-actions">
@@ -418,6 +419,38 @@ function SearchIcon() {
     >
       <circle cx="11" cy="11" r="7" />
       <path d="m16 16 4 4" />
+    </svg>
+  );
+}
+
+function WorkflowMark() {
+  return (
+    <svg aria-hidden="true" className="app-brand-mark" viewBox="0 0 28 28">
+      <path d="M9 14c5 0 5-7 11-7M9 14c5 0 5 7 11 7" />
+      <rect
+        className="app-brand-mark-trigger"
+        height="8"
+        rx="2"
+        width="8"
+        x="3"
+        y="10"
+      />
+      <rect
+        className="app-brand-mark-step"
+        height="7"
+        rx="2"
+        width="7"
+        x="19"
+        y="4"
+      />
+      <rect
+        className="app-brand-mark-step"
+        height="7"
+        rx="2"
+        width="7"
+        x="19"
+        y="17"
+      />
     </svg>
   );
 }
